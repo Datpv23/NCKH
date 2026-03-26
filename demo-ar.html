@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Demo AR - Game Mode VKU</title>
+    <title>VKU AR - Spatial Builder Ultimate</title>
+    
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
 
@@ -17,112 +18,114 @@
     </script>
 
     <style>
-        /* --- GIAO DIỆN KHUNG 3D MẶC ĐỊNH --- */
+        body { margin: 0; overflow-x: hidden; }
+
+        /* KHUNG CHỨA 3D TRÊN WEB MẶC ĐỊNH */
         #ar-viewport {
             width: 100%; height: 50vh; border-radius: 16px; position: relative; background-color: #0b1426; overflow: hidden;
             background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 30px 30px; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;
         }
 
-        /* Nút Khởi động AR */
+        /* TÙY CHỈNH NÚT START AR CỦA THREE.JS */
         #ARButton {
             position: absolute !important; bottom: 20px !important; left: 50% !important; transform: translateX(-50%) !important;
-            background: var(--vku-red) !important; color: white !important; padding: 14px 28px !important; border-radius: 50px !important;
-            font-family: 'Inter', sans-serif !important; font-weight: bold !important; border: 2px solid white !important;
-            box-shadow: 0 10px 20px rgba(200, 16, 46, 0.5) !important; cursor: pointer !important; z-index: 100;
+            background: var(--vku-red, #c8102e) !important; color: white !important; padding: 14px 28px !important; border-radius: 50px !important;
+            font-family: 'Space Grotesk', sans-serif !important; font-weight: bold !important; border: 2px solid white !important;
+            box-shadow: 0 10px 20px rgba(200, 16, 46, 0.5) !important; cursor: pointer !important; z-index: 1000 !important;
         }
 
-        /* --- UI TRONG AR (GIAO DIỆN NỔI ĐÈ LÊN CAMERA) --- */
-        #dom-overlay {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;
-            flex-direction: column; justify-content: flex-end; padding-bottom: 20px;
+        /* --- UI OVERLAY: GIAO DIỆN HIỂN THỊ TRONG CAMERA AR --- */
+        #ar-ui-layer {
+            display: none; /* Chỉ hiện khi vào AR */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999;
+            pointer-events: none; /* Cực kỳ quan trọng: Cho phép chạm xuyên qua UI xuống sàn nhà */
+            flex-direction: column; justify-content: flex-end; padding-bottom: 25px;
         }
 
-        #ar-instructions {
-            text-align: center; color: white; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 20px;
-            font-size: 14px; font-weight: bold; margin: 0 auto 10px auto; pointer-events: none; backdrop-filter: blur(5px);
+        #status-badge {
+            align-self: center; background: rgba(0,0,0,0.6); color: #00e5ff; padding: 8px 16px; border-radius: 20px;
+            font-size: 14px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
         }
 
-        /* --- 1. MENU CHỌN MÔ HÌNH --- */
-        .model-carousel {
-            display: flex; overflow-x: auto; gap: 15px; padding: 10px; margin-bottom: 10px; scrollbar-width: none; pointer-events: auto;
+        /* 1. MENU CHỌN MÔ HÌNH (BUILD MENU) */
+        #build-menu {
+            display: flex; overflow-x: auto; gap: 15px; padding: 10px; margin-bottom: 10px; width: 100%;
+            scrollbar-width: none; pointer-events: auto; /* Bật chạm cho menu */
+            justify-content: center;
         }
-        .model-carousel::-webkit-scrollbar { display: none; }
+        #build-menu::-webkit-scrollbar { display: none; }
         
         .model-card {
             flex: 0 0 auto; width: 100px; background: rgba(1, 60, 120, 0.8); border: 2px solid transparent; border-radius: 16px;
             padding: 10px; text-align: center; cursor: pointer; color: white; transition: 0.3s; backdrop-filter: blur(5px);
         }
-        .model-card.active { border-color: var(--vku-gold); background: rgba(242, 169, 0, 0.2); box-shadow: 0 0 15px rgba(242, 169, 0, 0.5); }
+        .model-card.active { border-color: #f2a900; background: rgba(242, 169, 0, 0.2); box-shadow: 0 0 15px rgba(242, 169, 0, 0.5); }
         .model-icon { font-size: 24px; margin-bottom: 5px; }
-        .model-name { font-size: 11px; font-weight: bold; }
+        .model-name { font-size: 11px; font-weight: bold; font-family: sans-serif;}
 
-        /* --- 2. BẢNG ĐIỀU KHIỂN (EDIT PANEL) SẼ HIỆN KHI CHỌN VẬT THỂ --- */
-        #edit-panel {
-            display: none; flex-wrap: wrap; justify-content: center; gap: 10px; background: rgba(0, 0, 0, 0.7);
-            padding: 15px; border-radius: 20px; margin: 0 auto 15px auto; pointer-events: auto; backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2); max-width: 90%;
+        /* 2. BẢNG ĐIỀU KHIỂN (EDIT MENU) - Hiện khi chạm vào vật đã thả */
+        #edit-menu {
+            display: none; flex-wrap: wrap; justify-content: center; gap: 8px; background: rgba(0, 0, 0, 0.7);
+            padding: 15px; border-radius: 20px; margin: 0 auto 15px auto; pointer-events: auto; /* Bật chạm */
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); max-width: 90%;
         }
-        .control-btn {
-            background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 10px; padding: 10px 15px;
-            font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: bold; transition: 0.2s;
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 10px; padding: 10px 12px;
+            font-size: 14px; cursor: pointer; display: flex; align-items: center; font-weight: bold; transition: 0.2s;
         }
-        .control-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.4); }
-        .control-btn.danger { background: rgba(200, 16, 46, 0.8); }
-        .control-btn.success { background: rgba(1, 60, 120, 0.9); border: 1px solid var(--vku-gold); }
+        .ctrl-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.4); }
+        .ctrl-btn.danger { background: rgba(200, 16, 46, 0.8); }
+        .ctrl-btn.success { background: rgba(0, 229, 255, 0.8); color: black; }
     </style>
 </head>
 <body>
-    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING GAME ENGINE...</div></div>
+
     <vku-header></vku-header>
 
     <main>
-        <h1 class="gradient-text" style="text-align: center; font-size: 2.5rem">Xây Dựng Không Gian</h1>
+        <h1 class="gradient-text" style="text-align: center; font-size: 2.2rem; margin-top: 20px;">Trạm Thiết Kế AR</h1>
         
-        <div style="max-width: 700px; margin: 0 auto 20px auto; background: rgba(242, 169, 0, 0.1); border: 1px solid var(--vku-gold); padding: 15px; border-radius: 12px; text-align: center;">
-            <p style="color: var(--vku-blue); margin: 0; font-size: 14px">
-                <strong><span style="font-size: 16px">🎮</span> HƯỚNG DẪN CHƠI:</strong><br>
-                1. Bấm <strong>START AR</strong> và quét mặt sàn.<br>
-                2. Chạm màn hình để thả vật thể, chạm lên mặt bàn ảo để <strong>Xếp chồng</strong>.<br>
-                3. <strong>Chạm vào vật thể đã thả</strong> để mở bảng điều khiển (Di chuyển, Phóng to, Xoay, Xóa).
+        <div style="max-width: 700px; margin: 0 auto 20px auto; background: rgba(242, 169, 0, 0.1); border: 1px solid var(--vku-gold, #f2a900); padding: 15px; border-radius: 12px; text-align: center;">
+            <p style="color: var(--vku-blue, #013c78); margin: 0; font-size: 14px; line-height: 1.5;">
+                <strong><span style="font-size: 16px">🛠️</span> CÁCH CHƠI:</strong><br>
+                Lia camera tìm vòng tròn -> <strong>Chạm màn hình để thả vật</strong>.<br>
+                <strong>Chạm vào vật đã thả</strong> để mở bảng điều khiển (Xoay, Thu Phóng, Nâng, Xóa).
             </p>
         </div>
 
         <div class="ar-container" style="max-width: 900px; margin: 0 auto; padding: 0; border: none; background: transparent; box-shadow: none;">
             
             <div id="ar-viewport">
-                <p id="loading-status" style="color: white; font-weight: bold;">Đang tải Dữ liệu 3D...</p>
+                <p id="loading-text" style="color: white; font-weight: bold;">Đang nạp động cơ 3D...</p>
             </div>
 
-            <div id="dom-overlay">
-                <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                    
-                    <div id="ar-instructions">Quét sàn nhà và chạm để thả vật</div>
-                    
-                    <div id="edit-panel">
-                        <button class="control-btn" id="btn-scale-down">➖ Thu nhỏ</button>
-                        <button class="control-btn" id="btn-scale-up">➕ Phóng to</button>
-                        <button class="control-btn" id="btn-rotate">↻ Xoay</button>
-                        <button class="control-btn" id="btn-up">⬆️ Nâng lên</button>
-                        <button class="control-btn" id="btn-down">⬇️ Hạ xuống</button>
-                        <button class="control-btn danger" id="btn-delete">🗑️ Xóa</button>
-                        <button class="control-btn success" id="btn-deselect">✔️ Xong</button>
-                    </div>
+            <div id="ar-ui-layer">
+                <div id="status-badge">Hãy lia camera xuống sàn nhà</div>
+                
+                <div id="edit-menu">
+                    <button class="ctrl-btn" id="btn-scale-down">➖ Nhỏ</button>
+                    <button class="ctrl-btn" id="btn-scale-up">➕ To</button>
+                    <button class="ctrl-btn" id="btn-rotate">↻ Xoay</button>
+                    <button class="ctrl-btn" id="btn-up">⬆️ Lên</button>
+                    <button class="ctrl-btn" id="btn-down">⬇️ Xuống</button>
+                    <button class="ctrl-btn danger" id="btn-delete">🗑️ Xóa</button>
+                    <button class="ctrl-btn success" id="btn-done">✔️ Xong</button>
+                </div>
 
-                    <div class="model-carousel" id="model-menu">
-                        <div class="model-card active" data-src="models/living room_furniture.glb">
-                            <div class="model-icon">🛋️</div><div class="model-name">Phòng Khách</div>
-                        </div>
-                        <div class="model-card" data-src="models/phong_hoc_ve.glb">
-                            <div class="model-icon">🏫</div><div class="model-name">Giá Vẽ</div>
-                        </div>
-                        <div class="model-card" data-src="models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb">
-                            <div class="model-icon">🦅</div><div class="model-name">Chim Sấm</div>
-                        </div>
+                <div id="build-menu">
+                    <div class="model-card active" data-src="models/living room_furniture.glb">
+                        <div class="model-icon">🛋️</div><div class="model-name">Phòng Khách</div>
                     </div>
-
+                    <div class="model-card" data-src="models/phong_hoc_ve.glb">
+                        <div class="model-icon">🏫</div><div class="model-name">Giá Vẽ</div>
+                    </div>
+                    <div class="model-card" data-src="models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb">
+                        <div class="model-icon">🦅</div><div class="model-name">Chim Sấm</div>
+                    </div>
                 </div>
             </div>
+
         </div>
     </main>
 
@@ -136,76 +139,86 @@
         let camera, scene, renderer, controller, reticle;
         let hitTestSource = null, hitTestSourceRequested = false;
 
-        let currentModel = null; // Vật thể đang chọn ở Menu dưới
+        let currentModel = null; 
         const loader = new GLTFLoader();
 
-        // --- HỆ THỐNG QUẢN LÝ VẬT THỂ (GAME STATE) ---
-        let placedObjects = [];      // Mảng chứa các vật đã thả xuống
-        let selectedObject = null;   // Vật đang được nhấp chọn để sửa
-        let selectionBox = null;     // Khung viền sáng quanh vật đang chọn
-        let raycaster = new THREE.Raycaster(); // Tia laser dò chạm vật
+        // BIẾN TRẠNG THÁI GAME
+        let placedObjects = [];      // Các vật thể đã thả
+        let selectedObject = null;   // Vật thể đang chọn để sửa
+        let selectionBox = null;     // Khung viền màu đỏ báo hiệu đang chọn
+        let raycaster = new THREE.Raycaster();
 
-        const UI = {
-            menu: document.getElementById('model-menu'),
-            editPanel: document.getElementById('edit-panel'),
-            instructions: document.getElementById('ar-instructions'),
-            status: document.getElementById('loading-status')
-        };
+        // KẾT NỐI GIAO DIỆN
+        const uiLayer = document.getElementById('ar-ui-layer');
+        const buildMenu = document.getElementById('build-menu');
+        const editMenu = document.getElementById('edit-menu');
+        const statusBadge = document.getElementById('status-badge');
+        const loadingText = document.getElementById('loading-text');
 
         init();
         animate();
 
         function init() {
             const viewport = document.getElementById('ar-viewport');
+            
+            // 1. TẠO SCENE & CAMERA
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, viewport.clientWidth / viewport.clientHeight, 0.01, 20);
 
-            // Ánh sáng cho vật thể
+            // 2. TẠO ÁNH SÁNG
             const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2); light.position.set(0.5, 1, 0.25); scene.add(light);
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.5); dirLight.position.set(1, 4, 2); scene.add(dirLight);
 
-            // Khởi tạo Engine WebGL
+            // 3. TẠO RENDERER WEBGL
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-            renderer.xr.enabled = true; // Kích hoạt AR
-            viewport.innerHTML = ''; viewport.appendChild(renderer.domElement);
+            renderer.xr.enabled = true; // Bật chế độ AR
+            
+            viewport.innerHTML = ''; 
+            viewport.appendChild(renderer.domElement);
 
-            // Khởi tạo Nút AR và Gắn Giao diện đè (Overlay)
-            const overlayElement = document.getElementById('dom-overlay');
+            // 4. KHỞI TẠO NÚT AR VÀ ÉP DOM OVERLAY LÊN TOÀN MÀN HÌNH (SỬA LỖI IOS)
             viewport.appendChild(ARButton.createButton(renderer, { 
                 requiredFeatures: ['hit-test'], 
                 optionalFeatures: ['dom-overlay'], 
-                domOverlay: { root: overlayElement } 
+                domOverlay: { root: document.body } // Ép dính vào Body để không bị lỗi trên iPhone
             }));
 
-            // Tạo Vòng Ngắm dò sàn nhà (Màu Vàng)
-            reticle = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf2a900 }));
+            // 5. TẠO VÒNG NGẮM DƯỚI SÀN (RETICLE)
+            reticle = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
             reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
-            // Tạo Khung bao quanh vật thể khi chọn (Màu Đỏ VKU)
-            selectionBox = new THREE.BoxHelper(reticle, 0xc8102e);
-            selectionBox.material.depthTest = false; // Đảm bảo luôn nhìn thấy khung viền
+            // 6. TẠO KHUNG VIỀN ĐỎ BAO QUANH VẬT ĐƯỢC CHỌN
+            selectionBox = new THREE.BoxHelper(reticle, 0xff0000);
+            selectionBox.material.depthTest = false; // Xuyên thấu để luôn nhìn thấy viền
             selectionBox.visible = false;
             scene.add(selectionBox);
 
-            // Bắt sự kiện chạm ngón tay vào màn hình
+            // 7. BẮT SỰ KIỆN CHẠM MÀN HÌNH
             controller = renderer.xr.getController(0);
             controller.addEventListener('select', onSelect);
             scene.add(controller);
 
-            // Cài đặt các nút bấm UI
-            setupUIControls();
-            loadModel("models/living room_furniture.glb"); // Tải mặc định file đầu tiên
+            // 8. CÀI ĐẶT UI & TẢI MÔ HÌNH MẶC ĐỊNH
+            setupUI();
+            loadModel("models/living room_furniture.glb");
+
+            // 9. LẮNG NGHE SỰ KIỆN BẬT/TẮT CAMERA
+            renderer.xr.addEventListener('sessionstart', () => { 
+                uiLayer.style.display = 'flex'; // Hiện UI khi vào AR
+                statusBadge.innerText = "Đang dò mặt phẳng...";
+            });
+            renderer.xr.addEventListener('sessionend', () => { 
+                uiLayer.style.display = 'none'; // Ẩn UI khi thoát
+            });
 
             window.addEventListener('resize', onWindowResize);
-            renderer.xr.addEventListener('sessionstart', () => { overlayElement.style.display = 'flex'; });
-            renderer.xr.addEventListener('sessionend', () => { overlayElement.style.display = 'none'; });
         }
 
-        // --- CÀI ĐẶT CÁC NÚT ĐIỀU KHIỂN ---
-        function setupUIControls() {
-            // 1. Chuyển đổi mô hình ở Carousel
+        // --- CÀI ĐẶT SỰ KIỆN CỦA CÁC NÚT BẤM (UI LOGIC) ---
+        function setupUI() {
+            // Chuyển thẻ mô hình
             document.querySelectorAll('.model-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     const src = e.currentTarget.getAttribute('data-src');
@@ -215,144 +228,6 @@
                 });
             });
 
-            // 2. Chức năng của Bảng Edit
-            document.getElementById('btn-scale-up').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiplyScalar(1.2); selectionBox.update(); } });
-            document.getElementById('btn-scale-down').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiplyScalar(0.8); selectionBox.update(); } });
-            document.getElementById('btn-rotate').addEventListener('click', () => { if(selectedObject) { selectedObject.rotation.y += Math.PI / 4; selectionBox.update(); } }); // Xoay 45 độ
-            document.getElementById('btn-up').addEventListener('click', () => { if(selectedObject) { selectedObject.position.y += 0.1; selectionBox.update(); } }); // Nâng lên 10cm
-            document.getElementById('btn-down').addEventListener('click', () => { if(selectedObject) { selectedObject.position.y -= 0.1; selectionBox.update(); } });
-            
-            // Nút Xóa
-            document.getElementById('btn-delete').addEventListener('click', () => {
-                if(selectedObject) {
-                    scene.remove(selectedObject);
-                    placedObjects = placedObjects.filter(obj => obj !== selectedObject); // Xóa khỏi bộ nhớ
-                    deselectObject();
-                    UI.instructions.innerText = "Đã xóa vật thể";
-                }
-            });
-
-            // Nút Bỏ chọn
-            document.getElementById('btn-deselect').addEventListener('click', deselectObject);
-        }
-
-        function loadModel(url) {
-            UI.instructions.innerText = "Đang tải mô hình...";
-            loader.load(url, function (gltf) {
-                currentModel = gltf.scene;
-                currentModel.scale.set(0.5, 0.5, 0.5); 
-                // Gắn mác gốc để Dò chạm (Raycaster) hoạt động chính xác
-                currentModel.userData.isRoot = true; 
-                UI.instructions.innerText = "Chạm sàn để thả đồ. Chạm lên bàn để xếp chồng.";
-            }, undefined, function(err) {
-                UI.instructions.innerText = "LỖI: Không tìm thấy file 3D!";
-            });
-        }
-
-        // --- LOGIC CHÍNH: XỬ LÝ CHẠM MÀN HÌNH ---
-        function onSelect() {
-            // Cài đặt tia Laser ảo quét từ điểm giữa màn hình
-            const tempMatrix = new THREE.Matrix4();
-            tempMatrix.identity().extractRotation( controller.matrixWorld );
-            raycaster.ray.origin.setFromMatrixPosition( controller.matrixWorld );
-            raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( tempMatrix );
-
-            // 1. Dò xem có chạm trúng vật thể ảo nào đã đặt không (ĐỂ CHỌN HOẶC XẾP CHỒNG)
-            const intersects = raycaster.intersectObjects( placedObjects, true );
-
-            if (intersects.length > 0) {
-                // Lấy Cụm vật thể gốc (Tránh chọn nhầm 1 cái chân bàn)
-                let hitObject = intersects[0].object;
-                while (hitObject.parent && !hitObject.userData.isRoot) { hitObject = hitObject.parent; }
-
-                if (!selectedObject) {
-                    // TRƯỜNG HỢP A: Đang rảnh tay -> CHỌN vật thể để sửa
-                    selectObject(hitObject);
-                } else {
-                    // TRƯỜNG HỢP B: Đang cầm 1 vật thể sửa -> ĐẶT nó lên trên vật thể kia (Xếp chồng)
-                    selectedObject.position.copy(intersects[0].point); // Di chuyển đến điểm chạm
-                    selectionBox.update();
-                    UI.instructions.innerText = "Đã xếp chồng vật thể!";
-                }
-                return; // Ngừng thực thi các logic dưới
-            }
-
-            // 2. Không chạm trúng vật ảo, mà chạm trúng SÀN THỰC TẾ
-            if (reticle.visible) {
-                if (selectedObject) {
-                    // Đang chỉnh sửa vật -> Dời vật ra vị trí mới trên sàn
-                    selectedObject.position.setFromMatrixPosition(reticle.matrix);
-                    selectionBox.update();
-                    UI.instructions.innerText = "Đã di chuyển vật thể";
-                } else if (currentModel) {
-                    // Chưa có vật nào được chọn -> THẢ VẬT MỚI
-                    const newObject = currentModel.clone();
-                    newObject.position.setFromMatrixPosition(reticle.matrix);
-                    
-                    scene.add(newObject);
-                    placedObjects.push(newObject);
-                    
-                    // Tự động bật chế độ chỉnh sửa cho vật vừa đặt
-                    selectObject(newObject);
-                }
-            }
-        }
-
-        // --- HÀM BẬT/TẮT CHẾ ĐỘ CHỈNH SỬA ---
-        function selectObject(object) {
-            selectedObject = object;
-            selectionBox.setFromObject(selectedObject);
-            selectionBox.visible = true;
-
-            UI.menu.style.display = 'none'; // Ẩn menu thêm đồ
-            UI.editPanel.style.display = 'flex'; // Bật bảng Edit
-            UI.instructions.innerText = "Đang chỉnh sửa. Chạm ra sàn để Dời vị trí.";
-        }
-
-        function deselectObject() {
-            selectedObject = null;
-            selectionBox.visible = false;
-            
-            UI.menu.style.display = 'flex';
-            UI.editPanel.style.display = 'none';
-            UI.instructions.innerText = "Chạm sàn để thả đồ. Chạm đồ để chỉnh sửa.";
-        }
-
-        function onWindowResize() {
-            const viewport = document.getElementById('ar-viewport');
-            camera.aspect = viewport.clientWidth / viewport.clientHeight;
-            camera.updateProjectionMatrix(); renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-        }
-
-        function animate() { renderer.setAnimationLoop(render); }
-
-        function render(timestamp, frame) {
-            // Cập nhật liên tục Khung chọn màu đỏ nếu đang có vật được chọn
-            if (selectedObject && selectionBox.visible) {
-                selectionBox.update();
-            }
-
-            if (frame) {
-                const referenceSpace = renderer.xr.getReferenceSpace();
-                const session = renderer.xr.getSession();
-
-                if (hitTestSourceRequested === false) {
-                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
-                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) { hitTestSource = source; });
-                    });
-                    session.addEventListener('end', function () { hitTestSourceRequested = false; hitTestSource = null; reticle.visible = false; });
-                    hitTestSourceRequested = true;
-                }
-                if (hitTestSource) {
-                    const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    if (hitTestResults.length > 0) {
-                        const hit = hitTestResults[0]; reticle.visible = true;
-                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                    } else { reticle.visible = false; }
-                }
-            }
-            renderer.render(scene, camera);
-        }
-    </script>
-</body>
-</html>
+            // Chức năng Edit (Thu/Phóng/Xoay/Dịch chuyển cao độ)
+            document.getElementById('btn-scale-up').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiplyScalar(1.2); updateSelectionBox(); } });
+            document.getElementById('btn-scale-down').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiply
