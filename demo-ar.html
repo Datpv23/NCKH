@@ -1,345 +1,173 @@
 <!doctype html>
 <html lang="vi">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>VKU AR - Spatial Sandbox Game Mode</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo AR - VKU AR DrawRoom (A-Frame)</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
-    
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-    
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Space Grotesk', sans-serif; background-color: #0b1426;}
-        
-        #ar-viewport {
-            width: 100%; height: 50vh; border-radius: 16px; position: relative;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-            display: flex; justify-content: center; align-items: center;
-        }
+      .model-carousel {
+        display: flex;
+        overflow-x: auto;
+        gap: 15px;
+        padding: 15px 5px;
+        margin-top: 15px;
+        scrollbar-width: none; 
+        -ms-overflow-style: none; 
+      }
+      .model-carousel::-webkit-scrollbar {
+        display: none; 
+      }
+      
+      .model-card {
+        flex: 0 0 auto;
+        width: 110px;
+        background: rgba(18, 35, 67, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 15px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: var(--text-muted);
+        backdrop-filter: blur(5px);
+      }
+      
+      .model-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-3px);
+      }
+      
+      .model-card.active {
+        border-color: var(--ar-cyan, #00e5ff);
+        background: rgba(0, 229, 255, 0.08);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.2), inset 0 0 10px rgba(0, 229, 255, 0.1);
+      }
+      
+      .model-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      }
+      
+      .model-name {
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Space Grotesk', sans-serif;
+        line-height: 1.2;
+      }
 
-        #ARButton {
-            position: absolute !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) !important;
-            background: #ff2a4b !important; color: white !important; padding: 15px 30px !important;
-            border-radius: 50px !important; font-weight: bold !important; border: 2px solid white !important;
-            box-shadow: 0 10px 30px rgba(255, 42, 75, 0.5) !important; cursor: pointer !important; z-index: 1000 !important;
-        }
+      /* TÙY CHỈNH KHUNG HIỂN THỊ A-FRAME */
+      #aframe-container {
+        width: 100%;
+        height: 50vh;
+        border-radius: 16px;
+        overflow: hidden; /* Cắt bỏ phần dư để giữ góc bo tròn */
+        position: relative;
+        background-color: #b5c6d0; /* Màu nền giống model-viewer neutral */
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+      }
 
-        #dom-overlay {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 99999; flex-direction: column; justify-content: flex-end; padding-bottom: 25px;
-        }
-
-        #ar-instructions {
-            background: rgba(0, 0, 0, 0.7); color: #00e5ff; padding: 10px; text-align: center;
-            font-size: 14px; font-weight: bold; pointer-events: none; border-radius: 10px;
-            max-width: 90%; margin: 0 auto 10px auto; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-        }
-
-        .model-carousel {
-            display: flex; overflow-x: auto; gap: 15px; padding: 10px 5px; margin-top: 15px;
-            scrollbar-width: none; pointer-events: auto; justify-content: center;
-        }
-        .model-carousel::-webkit-scrollbar { display: none; }
-        
-        .model-card {
-            flex: 0 0 auto; width: 100px; background: rgba(18, 35, 67, 0.8); border: 2px solid transparent;
-            border-radius: 16px; padding: 10px; text-align: center; cursor: pointer; color: white; backdrop-filter: blur(5px);
-        }
-        .model-card.active { border-color: #00e5ff; background: rgba(0, 229, 255, 0.1); color: #fff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.3); }
-        .model-icon { font-size: 24px; margin-bottom: 5px; }
-        .model-name { font-size: 11px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
-
-        #edit-panel {
-            display: none; flex-wrap: wrap; justify-content: center; gap: 10px; background: rgba(0,0,0,0.7);
-            padding: 15px; border-radius: 20px; margin: 0 auto 10px auto; pointer-events: auto; 
-            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); width: max-content;
-        }
-        .ctrl-btn {
-            background: rgba(255, 255, 255, 0.15); border: none; color: white; 
-            padding: 10px 15px; border-radius: 10px; font-size: 16px; cursor: pointer; display: flex; align-items: center;
-            font-weight: bold; font-family: 'Space Grotesk', sans-serif; transition: 0.2s;
-        }
-        .ctrl-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.3); }
-        .ctrl-btn.danger { background: rgba(200, 16, 46, 0.8); }
-        .ctrl-btn.success { background: rgba(0, 229, 255, 0.8); color: black; }
+      /* Nút AR mặc định của A-Frame sẽ nằm ở góc dưới bên phải. 
+         Bạn có thể style thêm cho nó thông qua class .a-enter-ar */
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">INITIALIZING AR ENGINE...</div>
+    </div>
+
     <vku-header></vku-header>
 
     <main>
-        <h1 class="gradient-text" style="text-align: center; font-size: 2.5rem; margin-top: 20px;">VKU AR Spatial sandbox</h1>
-        <div style="max-width: 700px; margin: 0 auto 20px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px; border-radius: 12px; text-align: center;">
-            <p style="color: var(--vku-gold); margin: 0; font-size: 14px">
-                <strong><span style="font-size: 16px">🎮</span> HƯỚNG DẪN CHƠI:</strong><br>
-                Lia camera tìm vòng tròn -> **Chạm màn hình để thả vật**. <br>
-                **Chạm vào vật cũ** để mở bảng chỉnh sửa (Phóng to, Xoay, Xóa, Nâng Lên).
-            </p>
-        </div>
+      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
+        Truy Cập AR Camera
+      </h1>
 
-        <div class="ar-container" style="max-width: 900px; margin: 0 auto; padding: 0; border: none; background: transparent; box-shadow: none;">
+      <div
+        style="
+          max-width: 700px;
+          margin: 0 auto 30px auto;
+          background: rgba(255, 193, 7, 0.1);
+          border: 1px solid rgba(255, 193, 7, 0.3);
+          padding: 15px 25px;
+          border-radius: 12px;
+          text-align: center;
+        "
+      >
+        <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
+          <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
+          Vuốt chọn mô hình bên dưới. Nhấn nút <strong>AR</strong> ở góc phải khung hình để mở Camera và quét mặt sàn.
+        </p>
+      </div>
+
+      <div class="ar-container" style="max-width: 900px; margin: 0 auto">
+        
+        <div id="aframe-container">
+          
+          <a-scene embedded xr-mode-ui="XRMode: ar" vr-mode-ui="enabled: false">
             
-            <div id="ar-viewport">
-                <p id="loading-status" style="color: white; font-weight: bold; text-align: center; padding: 20px;">Đang nạp động cơ 3D...</p>
-            </div>
+            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+            <a-light type="directional" color="#ffffff" intensity="0.8" position="1 2 1"></a-light>
 
-            <div id="dom-overlay">
-                <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                    <div id="ar-instructions">Hãy quét sàn nhà...</div>
-                    
-                    <div id="edit-panel">
-                        <button class="ctrl-btn" id="btn-scale-down">➖ Nhỏ</button>
-                        <button class="ctrl-btn" id="btn-scale-up">➕ To</button>
-                        <button class="ctrl-btn" id="btn-rotate">↻ Xoay</button>
-                        <button class="ctrl-btn" id="btn-up">⬆️ Nâng lên</button>
-                        <button class="ctrl-btn danger" id="btn-delete">🗑️ Xóa</button>
-                        <button class="ctrl-btn success" id="btn-done">✔️ Xong</button>
-                    </div>
+            <a-camera position="0 1.2 2"></a-camera>
 
-                    <div class="model-carousel" id="model-menu">
-                        <div class="model-card active" data-src="models/living room_furniture.glb">
-                            <div class="model-icon">🛋️</div><div class="model-name">Phòng Khách</div>
-                        </div>
-                        <div class="model-card" data-src="models/phong_hoc_ve.glb">
-                            <div class="model-icon">🏫</div><div class="model-name">Giá Vẽ</div>
-                        </div>
-                        <div class="model-card" data-src="models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb">
-                            <div class="model-icon">🦅</div><div class="model-name">Chim Sấm</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <a-entity
+              id="main-model"
+              gltf-model="url(models/living room_furniture.glb)"
+              scale="0.5 0.5 0.5"
+              position="0 0 -1.5"
+              animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+            </a-entity>
+
+          </a-scene>
+
         </div>
+
+        <div class="model-carousel">
+            
+            <div class="model-card active" onclick="selectModel('models/living room_furniture.glb', this)">
+                <div class="model-icon">🛋️</div>
+                <div class="model-name">Phòng Khách</div>
+            </div>
+
+            <div class="model-card" onclick="selectModel('models/phong_hoc_thpt_phong_phu.glb', this)">
+                <div class="model-icon">🏫</div>
+                <div class="model-name">Phòng Vẽ VKU</div>
+            </div>
+
+            <div class="model-card" onclick="selectModel('models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb', this)">
+                <div class="model-icon">🦅</div>
+                <div class="model-name">Thunderbird</div>
+            </div>
+
+        </div>
+      </div>
     </main>
 
     <vku-footer></vku-footer>
 
-    <script type="module">
-        // RADAR BẮT LỖI: HIỂN THỊ MỌI LỖI LÊN MÀN HÌNH ĐỂ BẠN NHÌN THẤY
-        window.onerror = function(message, source, lineno, colno, error) {
-            document.getElementById('loading-status').innerText = "🚨 LỖI: " + message;
-            document.getElementById('loading-status').style.color = "#ff2a4b";
-            return true;
-        };
+    <script>
+      function selectModel(srcUrl, clickedCard) {
+        // 1. Tìm Entity chứa mô hình trong A-Frame
+        const modelEntity = document.getElementById('main-model');
+        
+        // 2. Set lại thuộc tính gltf-model với đường dẫn mới (Bắt buộc dùng cú pháp url(...) của A-Frame)
+        modelEntity.setAttribute('gltf-model', 'url(' + srcUrl + ')');
 
-        import * as THREE from 'three';
-        import { ARButton } from 'three/addons/webxr/ARButton.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        // 3. Xóa trạng thái sáng ở tất cả các nút
+        const allCards = document.querySelectorAll('.model-card');
+        allCards.forEach(card => card.classList.remove('active'));
 
-        let camera, scene, renderer, controller, reticle;
-        let hitTestSource = null, hitTestSourceRequested = false;
-
-        let currentModel = null; 
-        const loader = new GLTFLoader();
-
-        let placedObjects = [];      
-        let selectedObject = null;   
-        let selectionBox = null;     
-        let raycaster = new THREE.Raycaster(); 
-
-        const UI = {
-            viewport: document.getElementById('ar-viewport'),
-            overlay: document.getElementById('dom-overlay'),
-            buildMenu: document.getElementById('model-menu'),
-            editPanel: document.getElementById('edit-panel'),
-            instructions: document.getElementById('ar-instructions')
-        };
-
-        init();
-        animate();
-
-        function init() {
-            UI.viewport.innerHTML = ''; // Code chạy tới đây nghĩa là đã nạp xong, xóa chữ Đang tải!
-
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2); light.position.set(0.5, 1, 0.25); scene.add(light);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5); dirLight.position.set(1, 4, 2); scene.add(dirLight);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true; 
-            document.body.appendChild(renderer.domElement);
-
-            const arBtn = ARButton.createButton(renderer, { 
-                requiredFeatures: ['hit-test'], 
-                optionalFeatures: ['dom-overlay'], 
-                domOverlay: { root: document.body } 
-            });
-            document.body.appendChild(arBtn);
-
-            const geometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
-            const material = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-            reticle = new THREE.Mesh(geometry, material);
-            reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
-
-            selectionBox = new THREE.BoxHelper(reticle, 0xff0000);
-            selectionBox.material.depthTest = false; 
-            selectionBox.visible = false;
-            scene.add(selectionBox);
-
-            controller = renderer.xr.getController(0);
-            controller.addEventListener('select', onSelect);
-            scene.add(controller);
-
-            setupUIControls();
-            loadModel("models/living room_furniture.glb"); 
-
-            renderer.xr.addEventListener('sessionstart', () => { 
-                UI.overlay.style.display = 'flex'; 
-                UI.instructions.innerText = "Hãy dò mặt phẳng...";
-            });
-            renderer.xr.addEventListener('sessionend', () => { 
-                UI.overlay.style.display = 'none'; 
-            });
-
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        function loadModel(url) {
-            UI.instructions.innerText = "Đang tải mô hình...";
-            loader.load(url, function (gltf) {
-                currentModel = gltf.scene;
-                currentModel.scale.set(0.5, 0.5, 0.5); 
-                currentModel.userData.isRoot = true; 
-                UI.instructions.innerText = "Sẵn sàng thả đồ!";
-            }, undefined, function(err) {
-                UI.instructions.innerText = "🚨 Không tìm thấy file 3D!";
-            });
-        }
-
-        function setupUIControls() {
-            const cards = document.querySelectorAll('.model-card');
-            cards.forEach(card => {
-                card.addEventListener('click', (e) => {
-                    const src = e.currentTarget.getAttribute('data-src');
-                    cards.forEach(c => c.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
-                    loadModel(src);
-                });
-            });
-
-            document.getElementById('btn-scale-up').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiplyScalar(1.2); selectionBox.update(); } });
-            document.getElementById('btn-scale-down').addEventListener('click', () => { if(selectedObject) { selectedObject.scale.multiplyScalar(0.8); selectionBox.update(); } });
-            document.getElementById('btn-rotate').addEventListener('click', () => { if(selectedObject) { selectedObject.rotation.y += Math.PI / 4; selectionBox.update(); } });
-            document.getElementById('btn-up').addEventListener('click', () => { if(selectedObject) { selectedObject.position.y += 0.1; selectionBox.update(); } });
-            
-            document.getElementById('btn-delete').addEventListener('click', () => {
-                if(selectedObject) {
-                    scene.remove(selectedObject);
-                    placedObjects = placedObjects.filter(obj => obj !== selectedObject);
-                    deselectObject();
-                    UI.instructions.innerText = "Đã xóa vật thể";
-                }
-            });
-            document.getElementById('btn-done').addEventListener('click', deselectObject);
-        }
-
-        function onSelect() {
-            const tempMatrix = new THREE.Matrix4();
-            tempMatrix.identity().extractRotation( controller.matrixWorld );
-            raycaster.ray.origin.setFromMatrixPosition( controller.matrixWorld );
-            raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( tempMatrix );
-
-            const intersects = raycaster.intersectObjects( placedObjects, true );
-
-            if (intersects.length > 0) {
-                let hitObject = intersects[0].object;
-                while (hitObject.parent && !hitObject.userData.isRoot) { hitObject = hitObject.parent; }
-
-                if (!selectedObject) {
-                    selectObject(hitObject);
-                } else {
-                    selectedObject.position.copy(intersects[0].point); 
-                    selectionBox.update();
-                    UI.instructions.innerText = "Đã xếp chồng lên trên";
-                }
-                return; 
-            }
-
-            if (reticle.visible) {
-                if (selectedObject) {
-                    selectedObject.position.setFromMatrixPosition(reticle.matrix);
-                    selectionBox.update();
-                    UI.instructions.innerText = "Đã dời vật thể";
-                } else if (currentModel) {
-                    const newObject = currentModel.clone(); 
-                    newObject.position.setFromMatrixPosition(reticle.matrix);
-                    newObject.rotation.y = Math.random() * Math.PI; 
-                    
-                    scene.add(newObject);
-                    placedObjects.push(newObject);
-                    selectObject(newObject); 
-                }
-            }
-        }
-
-        function selectObject(object) {
-            selectedObject = object;
-            selectionBox.setFromObject(selectedObject);
-            selectionBox.visible = true;
-
-            UI.buildMenu.style.display = 'none'; 
-            UI.editPanel.style.display = 'flex'; 
-            UI.instructions.innerText = "Đang chỉnh sửa. Chạm ra sàn trống để Dời vị trí.";
-        }
-
-        function deselectObject() {
-            selectedObject = null;
-            selectionBox.visible = false;
-            
-            UI.buildMenu.style.display = 'flex';
-            UI.editPanel.style.display = 'none';
-            UI.instructions.innerText = "Chọn mô hình và chạm sàn để thả";
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() { renderer.setAnimationLoop(render); }
-
-        function render(timestamp, frame) {
-            if (selectedObject && selectionBox.visible) {
-                selectionBox.update();
-            }
-
-            if (frame) {
-                const referenceSpace = renderer.xr.getReferenceSpace(); const session = renderer.xr.getSession();
-
-                if (hitTestSourceRequested === false) {
-                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
-                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) { hitTestSource = source; });
-                    });
-                    session.addEventListener('end', function () { hitTestSourceRequested = false; hitTestSource = null; reticle.visible = false; });
-                    hitTestSourceRequested = true;
-                }
-
-                if (hitTestSource) {
-                    const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    if (hitTestResults.length > 0) {
-                        const hit = hitTestResults[0]; reticle.visible = true;
-                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                    } else { reticle.visible = false; }
-                }
-            }
-            renderer.render(scene, camera);
-        }
+        // 4. Bật sáng nút vừa bấm
+        clickedCard.classList.add('active');
+      }
     </script>
-</body>
+  </body>
 </html>
