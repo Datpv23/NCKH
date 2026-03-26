@@ -3,12 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demo AR - VKU AR DrawRoom (A-Frame)</title>
+    <title>Demo AR - VKU AR DrawRoom</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
+    ></script>
 
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
+    <!-- Thêm CSS riêng cho Menu chọn mô hình kiểu App Mobile -->
     <style>
       .model-carousel {
         display: flex;
@@ -16,6 +19,7 @@
         gap: 15px;
         padding: 15px 5px;
         margin-top: 15px;
+        /* Ẩn thanh cuộn cho đẹp */
         scrollbar-width: none; 
         -ms-overflow-style: none; 
       }
@@ -42,6 +46,7 @@
         transform: translateY(-3px);
       }
       
+      /* Hiệu ứng khi Card đang được chọn */
       .model-card.active {
         border-color: var(--ar-cyan, #00e5ff);
         background: rgba(0, 229, 255, 0.08);
@@ -61,26 +66,12 @@
         font-family: 'Space Grotesk', sans-serif;
         line-height: 1.2;
       }
-
-      /* TÙY CHỈNH KHUNG HIỂN THỊ A-FRAME */
-      #aframe-container {
-        width: 100%;
-        height: 50vh;
-        border-radius: 16px;
-        overflow: hidden; /* Cắt bỏ phần dư để giữ góc bo tròn */
-        position: relative;
-        background-color: #b5c6d0; /* Màu nền giống model-viewer neutral */
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-      }
-
-      /* Nút AR mặc định của A-Frame sẽ nằm ở góc dưới bên phải. 
-         Bạn có thể style thêm cho nó thông qua class .a-enter-ar */
     </style>
   </head>
   <body>
     <div id="splash-screen">
       <div class="loader-core"></div>
-      <div class="loader-text">INITIALIZING AR ENGINE...</div>
+      <div class="loader-text">INITIALIZING AR CAMERA...</div>
     </div>
 
     <vku-header></vku-header>
@@ -103,49 +94,74 @@
       >
         <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
           <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
-          Vuốt chọn mô hình bên dưới. Nhấn nút <strong>AR</strong> ở góc phải khung hình để mở Camera và quét mặt sàn.
+          Vuốt chọn mô hình bên dưới. Nhấn nút <strong>Khởi động Hologram</strong> trên điện thoại để mở Camera và quét mặt sàn.
         </p>
       </div>
 
       <div class="ar-container" style="max-width: 900px; margin: 0 auto">
         
-        <div id="aframe-container">
-          
-          <a-scene embedded xr-mode-ui="XRMode: ar" vr-mode-ui="enabled: false">
-            
-            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-            <a-light type="directional" color="#ffffff" intensity="0.8" position="1 2 1"></a-light>
+        <!-- KHUNG HIỂN THỊ MÔ HÌNH -->
+        <model-viewer
+          id="ar-viewer"
+          src="models/living room_furniture.glb"
+          ar
+          ar-modes="webxr scene-viewer quick-look"
+          camera-controls
+          shadow-intensity="1.5"
+          environment-image="neutral"
+          style="width: 100%; height: 50vh; border-radius: 16px;"
+        >
+          <button slot="ar-button" class="ar-button">
+            <svg
+              viewBox="0 0 24 24"
+              style="width: 20px; height: 20px; fill: currentColor"
+            >
+              <path
+                d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"
+              />
+            </svg>
+            Khởi động Hologram
+          </button>
 
-            <a-camera position="0 1.2 2"></a-camera>
+          <div
+            slot="progress-bar"
+            style="
+              background: linear-gradient(90deg, transparent, var(--vku-red));
+              height: 4px;
+              display: block;
+              position: absolute;
+              bottom: 0;
+              width: 100%;
+            "
+          ></div>
+        </model-viewer>
 
-            <a-entity
-              id="main-model"
-              gltf-model="url(models/living room_furniture.glb)"
-              scale="0.5 0.5 0.5"
-              position="0 0 -1.5"
-              animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
-            </a-entity>
-
-          </a-scene>
-
-        </div>
-
+        <!-- DANH SÁCH CHỌN MÔ HÌNH (CAROUSEL) -->
         <div class="model-carousel">
             
+            <!-- Thẻ 1 -->
             <div class="model-card active" onclick="selectModel('models/living room_furniture.glb', this)">
                 <div class="model-icon">🛋️</div>
                 <div class="model-name">Phòng Khách</div>
             </div>
 
+            <!-- Thẻ 2 -->
             <div class="model-card" onclick="selectModel('models/phong_hoc_thpt_phong_phu.glb', this)">
                 <div class="model-icon">🏫</div>
                 <div class="model-name">Phòng Vẽ VKU</div>
             </div>
 
+            <!-- Thẻ 3 -->
             <div class="model-card" onclick="selectModel('models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb', this)">
                 <div class="model-icon">🦅</div>
                 <div class="model-name">Thunderbird</div>
             </div>
+
+            <!-- BẠN CÓ THỂ COPY THÊM THẺ (CARD) Ở ĐÂY NẾU CÓ THÊM MÔ HÌNH -->
+            <!-- <div class="model-card" onclick="selectModel('models/ten_file_cua_ban.glb', this)">
+                <div class="model-icon">🗿</div>
+                <div class="model-name">Tượng Thạch Cao</div>
+            </div> -->
 
         </div>
       </div>
@@ -153,19 +169,18 @@
 
     <vku-footer></vku-footer>
 
+    <!-- SCRIPT XỬ LÝ CHUYỂN ĐỔI MÔ HÌNH -->
     <script>
       function selectModel(srcUrl, clickedCard) {
-        // 1. Tìm Entity chứa mô hình trong A-Frame
-        const modelEntity = document.getElementById('main-model');
-        
-        // 2. Set lại thuộc tính gltf-model với đường dẫn mới (Bắt buộc dùng cú pháp url(...) của A-Frame)
-        modelEntity.setAttribute('gltf-model', 'url(' + srcUrl + ')');
+        // 1. Thay đổi nguồn file 3D của model-viewer
+        const viewer = document.getElementById('ar-viewer');
+        viewer.src = srcUrl;
 
-        // 3. Xóa trạng thái sáng ở tất cả các nút
+        // 2. Xóa trạng thái 'active' (phát sáng) ở tất cả các thẻ
         const allCards = document.querySelectorAll('.model-card');
         allCards.forEach(card => card.classList.remove('active'));
 
-        // 4. Bật sáng nút vừa bấm
+        // 3. Thêm trạng thái 'active' cho thẻ vừa được bấm
         clickedCard.classList.add('active');
       }
     </script>
