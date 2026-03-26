@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mô hình 3D - VKU AR DrawRoom</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
+    ></script>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">LOADING 3D ASSETS...</div>
+    </div>
+
+    <vku-header></vku-header>
+
+    <main>
+      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
+        Cơ Sở Dữ Liệu 3D
+      </h1>
+      <p
+        style="
+          text-align: center;
+          color: var(--text-muted);
+          max-width: 600px;
+          margin: 0 auto 30px auto;
+        "
+      >
+        Hệ thống phân tích không gian 360 độ. Vui lòng sử dụng thao tác
+        cuộn/chạm để tương tác với mô hình đa chiều.
+      </p>
+
+      <h2 style="text-align: center; color: var(--vku-gold); font-size: 1.5rem">
+        [01] Không Gian Phòng Thực Hành VKU
+      </h2>
+      <div
+        class="ar-container"
+        style="max-width: 1000px; margin: 15px auto 50px auto"
+      >
+        <model-viewer
+          src="models/phong_hoc_ve.glb"
+          camera-controls
+          auto-rotate
+          rotation-per-second="30deg"
+          shadow-intensity="1"
+          environment-image="neutral"
+        >
+        </model-viewer>
+      </div>
+
+      <h2 style="text-align: center; color: var(--vku-red); font-size: 1.5rem">
+        [02] Thực thể Demo: Elemental Thunderbird
+      </h2>
+      <div
+        class="ar-container"
+        style="max-width: 1000px; margin: 15px auto 30px auto"
+      >
+        <model-viewer
+          src="models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb"
+          camera-controls
+          auto-rotate
+          rotation-per-second="30deg"
+          shadow-intensity="2"
+          environment-image="neutral"
+        >
+        </model-viewer>
+      </div>
+       <h2 style="text-align: center; color: var(--vku-red); font-size: 1.5rem">
+        [003 Thực thể Demo: Elemental Thunderbird
+      </h2>
+      <div
+        class="ar-container"
+        style="max-width: 1000px; margin: 15px auto 30px auto"
+      >
+        <model-viewer
+          src="models/Meshy_AI__0314185138_texture.glb"
+          camera-controls
+          auto-rotate
+          rotation-per-second="30deg"
+          shadow-intensity="2"
+          environment-image="neutral"
+        >
+        </model-viewer>
+      </div>
+    </main>
+
+    <vku-footer></vku-footer>
+  </body>
+</html>

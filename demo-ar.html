@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo AR - VKU AR DrawRoom</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <style>
+      /* Giao diện UI Layer */
+      #ui-overlay {
+        position: absolute;
+        bottom: 0; left: 0; width: 100%;
+        padding-bottom: 20px;
+        z-index: 999;
+        /* Rất quan trọng: cho phép click xuyên qua vùng trống để chạm vào không gian 3D */
+        pointer-events: none; 
+      }
+
+      /* Đảm bảo các nút bấm vẫn nhận click */
+      .model-carousel, .control-panel, .mode-toggle {
+        pointer-events: auto;
+      }
+
+      /* Danh sách chọn mô hình (Giữ nguyên của bạn) */
+      .model-carousel {
+        display: flex;
+        overflow-x: auto;
+        gap: 15px;
+        padding: 15px 5px;
+        margin-top: 15px;
+        scrollbar-width: none; 
+        -ms-overflow-style: none; 
+      }
+      .model-carousel::-webkit-scrollbar { display: none; }
+      
+      .model-card {
+        flex: 0 0 auto;
+        width: 110px;
+        background: rgba(18, 35, 67, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 15px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: var(--text-muted, #ccc);
+        backdrop-filter: blur(5px);
+      }
+      .model-card.active {
+        border-color: var(--ar-cyan, #00e5ff);
+        background: rgba(0, 229, 255, 0.08);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+      }
+      .model-icon { font-size: 28px; margin-bottom: 8px; }
+      .model-name { font-size: 12px; font-weight: 600; }
+
+      /* Nút Chuyển Chế độ */
+      .mode-toggle {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .btn-mode {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid #555;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .btn-mode.active {
+        background: var(--ar-cyan, #00e5ff);
+        color: black;
+        border: none;
+      }
+
+      /* Bảng điều khiển vật thể */
+      .control-panel {
+        display: none; /* Ẩn mặc định, chỉ hiện khi chọn vật thể */
+        background: rgba(18, 35, 67, 0.85);
+        border: 1px solid rgba(0, 229, 255, 0.3);
+        border-radius: 16px;
+        padding: 12px;
+        margin: 0 10px 10px 10px;
+        backdrop-filter: blur(10px);
+      }
+      .ctrl-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .btn-ctrl {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn-ctrl:active { background: rgba(0, 229, 255, 0.3); }
+      .btn-delete { background: rgba(255, 75, 43, 0.4); grid-column: span 3; margin-top: 5px; }
+      
+      /* Căn chỉnh màn hình AR */
+      .ar-viewport {
+        position: relative;
+        width: 100%;
+        height: 60vh;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">INITIALIZING AR CAMERA...</div>
+    </div>
+
+    <vku-header></vku-header>
+
+    <main>
+      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
+        Truy Cập AR Camera
+      </h1>
+
+      <div class="ar-container" style="max-width: 900px; margin: 0 auto; padding: 0 10px;">
+        
+        <div class="ar-viewport">
+          <a-scene embedded 
+                   webxr="optionalFeatures: dom-overlay; overlayElement: #ui-overlay"
+                   cursor="rayOrigin: mouse"
+                   raycaster="objects: .interactable, .floor">
+                   
+            <a-plane class="floor" rotation="-90 0 0" width="100" height="100" visible="false"></a-plane>
+
+            <a-light type="ambient" intensity="0.6"></a-light>
+            <a-light type="directional" position="1 2 1" intensity="0.8"></a-light>
+          </a-scene>
+
+          <div id="ui-overlay">
+            
+            <div class="mode-toggle">
+              <button id="mode-place" class="btn-mode active" onclick="setMode('place')">🎯 Chế độ Đặt</button>
+              <button id="mode-edit" class="btn-mode" onclick="setMode('edit')">✋ Chỉnh Sửa</button>
+            </div>
+
+            <div id="control-panel" class="control-panel">
+              <div style="text-align: center; margin-bottom: 8px; color: #00e5ff; font-size: 12px; font-weight: bold;">
+                Đang chọn mô hình
+              </div>
+              <div class="ctrl-grid">
+                <button class="btn-ctrl" onclick="modifyObject('up')">⬆️ Lên</button>
+                <button class="btn-ctrl" onclick="modifyObject('down')">⬇️ Xuống</button>
+                <button class="btn-ctrl" onclick="modifyObject('scale-up')">➕ Phóng To</button>
+                
+                <button class="btn-ctrl" onclick="modifyObject('left')">⬅️ Trái</button>
+                <button class="btn-ctrl" onclick="modifyObject('right')">➡️ Phải</button>
+                <button class="btn-ctrl" onclick="modifyObject('scale-down')">➖ Thu Nhỏ</button>
+
+                <button class="btn-ctrl" onclick="modifyObject('forward')">⏫ Tới</button>
+                <button class="btn-ctrl" onclick="modifyObject('backward')">⏬ Lui</button>
+                <button class="btn-ctrl" onclick="deselectObject()">🔙 Bỏ Chọn</button>
+                
+                <button class="btn-ctrl btn-delete" onclick="modifyObject('delete')">❌ XÓA VẬT THỂ NÀY</button>
+              </div>
+            </div>
+
+            <div class="model-carousel">
+              <div class="model-card active" onclick="selectModel('models/living room_furniture.glb', this)">
+                  <div class="model-icon">🛋️</div>
+                  <div class="model-name">Phòng Khách</div>
+              </div>
+              <div class="model-card" onclick="selectModel('models/phong_hoc_thpt_phong_phu.glb', this)">
+                  <div class="model-icon">🏫</div>
+                  <div class="model-name">Phòng Vẽ VKU</div>
+              </div>
+              <div class="model-card" onclick="selectModel('models/Meshy_AI_Elemental_Thunderbird.glb', this)">
+                  <div class="model-icon">🦅</div>
+                  <div class="model-name">Thunderbird</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <vku-footer></vku-footer>
+
+    <script>
+      let currentModelUrl = 'models/living room_furniture.glb';
+      let currentMode = 'place'; // 'place' (đặt) hoặc 'edit' (sửa)
+      let selectedEntity = null; // Vật thể đang được chọn
+
+      // 1. Chọn Model từ danh sách
+      function selectModel(srcUrl, clickedCard) {
+        currentModelUrl = srcUrl;
+        document.querySelectorAll('.model-card').forEach(card => card.classList.remove('active'));
+        clickedCard.classList.add('active');
+        
+        // Chuyển về chế độ đặt ngay khi chọn đồ mới
+        setMode('place'); 
+      }
+
+      // 2. Thay đổi chế độ (Đặt/Sửa)
+      function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-place').classList.toggle('active', mode === 'place');
+        document.getElementById('mode-edit').classList.toggle('active', mode === 'edit');
+        
+        // Nếu chuyển sang Đặt đồ, ẩn bảng điều khiển
+        if (mode === 'place') {
+          deselectObject();
+        }
+      }
+
+      // 3. Xử lý sự kiện CHẠM (Click) vào màn hình 3D
+      document.querySelector('a-scene').addEventListener('click', function (evt) {
+        // Lấy thông tin điểm chạm và vật thể bị chạm
+        let intersection = evt.detail.intersection;
+        if (!intersection) return; // Không chạm trúng gì
+
+        let point = intersection.point;
+        let targetEl = intersection.object.el;
+
+        if (currentMode === 'place') {
+          // --- CHẾ ĐỘ ĐẶT ---
+          // Đặt mô hình ngay tại điểm chạm (đặt lên sàn, hoặc lên vật thể khác đều được)
+          placeObject(point);
+        } else if (currentMode === 'edit') {
+          // --- CHẾ ĐỘ SỬA ---
+          // Kiểm tra xem vật chạm vào có phải mô hình của mình không (class interactable)
+          if (targetEl && targetEl.classList.contains('interactable')) {
+            selectObject(targetEl);
+          } else {
+            deselectObject(); // Chạm ra ngoài mặt đất thì bỏ chọn
+          }
+        }
+      });
+
+      // Hàm Đặt vật thể vào Scene
+      function placeObject(point) {
+        let scene = document.querySelector('a-scene');
+        let newEl = document.createElement('a-entity');
+        
+        newEl.setAttribute('gltf-model', currentModelUrl);
+        newEl.setAttribute('position', point); // Đặt chính xác tại điểm chạm
+        newEl.setAttribute('scale', '1 1 1');
+        newEl.setAttribute('class', 'interactable'); // Gắn class để nhận diện click
+        
+        scene.appendChild(newEl);
+      }
+
+      // Hàm Chọn vật thể để chỉnh sửa
+      function selectObject(el) {
+        selectedEntity = el;
+        // Hiện bảng điều khiển
+        document.getElementById('control-panel').style.display = 'block';
+        document.querySelector('.model-carousel').style.display = 'none'; // Tạm ẩn carousel cho gọn
+      }
+
+      // Hàm Bỏ chọn
+      function deselectObject() {
+        selectedEntity = null;
+        document.getElementById('control-panel').style.display = 'none';
+        document.querySelector('.model-carousel').style.display = 'flex'; // Hiện lại carousel
+      }
+
+      // 4. Các chức năng Di chuyển, Thu phóng, Xóa
+      function modifyObject(action) {
+        if (!selectedEntity) return;
+
+        let pos = selectedEntity.getAttribute('position');
+        let scale = selectedEntity.getAttribute('scale');
+        let step = 0.1; // Khoảng cách mỗi lần di chuyển
+        
+        switch(action) {
+          case 'up': pos.y += step; break;
+          case 'down': pos.y -= step; break;
+          case 'left': pos.x -= step; break;
+          case 'right': pos.x += step; break;
+          case 'forward': pos.z -= step; break;
+          case 'backward': pos.z += step; break;
+          
+          case 'scale-up': 
+            scale.x += step; scale.y += step; scale.z += step; 
+            break;
+          case 'scale-down': 
+            scale.x -= step; scale.y -= step; scale.z -= step; 
+            // Giới hạn không cho thu nhỏ âm
+            if(scale.x < 0.05) { scale = {x:0.05, y:0.05, z:0.05}; }
+            break;
+            
+          case 'delete':
+            selectedEntity.parentNode.removeChild(selectedEntity);
+            deselectObject();
+            return;
+        }
+        
+        // Cập nhật lại vị trí/kích thước vào vật thể
+        selectedEntity.setAttribute('position', pos);
+        selectedEntity.setAttribute('scale', scale);
+      }
+    </script>
+  </body>
+</html>

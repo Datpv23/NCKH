@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tài liệu - VKU AR DrawRoom</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">FETCHING DOCUMENTS...</div>
+    </div>
+
+    <vku-header></vku-header>
+
+    <main>
+      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
+        Lưu Trữ Báo Cáo
+      </h1>
+      <p
+        style="
+          text-align: center;
+          color: var(--text-muted);
+          margin-bottom: 40px;
+        "
+      >
+        Truy xuất các tệp tin nghiên cứu, mã nguồn và tài liệu tham khảo dự án.
+      </p>
+
+      <div style="max-width: 800px; margin: 0 auto; display: grid; gap: 25px">
+        <div
+          class="ar-container"
+          style="
+            padding: 30px;
+            border-left: 4px solid var(--vku-red);
+            margin: 0;
+          "
+        >
+          <h3 style="margin-top: 0; font-size: 1.4rem; color: #fff">
+            [DOC] Báo cáo tổng kết đề tài
+          </h3>
+          <p style="color: var(--text-muted); margin-bottom: 20px">
+            Tài liệu phân tích chi tiết quy trình xây dựng ứng dụng WebXR, giải
+            pháp tối ưu hóa mesh 3D và kết quả thử nghiệm.
+          </p>
+          <a href="#" class="btn-sweep" style="padding: 2px">
+            <span style="padding: 10px 20px; font-size: 14px"
+              >⬇ Truy xuất PDF</span
+            >
+          </a>
+        </div>
+
+        <div
+          class="ar-container"
+          style="
+            padding: 30px;
+            border-left: 4px solid var(--vku-gold);
+            margin: 0;
+          "
+        >
+          <h3 style="margin-top: 0; font-size: 1.4rem; color: #fff">
+            [SRC] Mã nguồn hệ thống (Source Code)
+          </h3>
+          <p style="color: var(--text-muted); margin-bottom: 20px">
+            Toàn bộ mã nguồn HTML/CSS/JS và bộ tài nguyên 3D (.glb, texture) đã
+            được đóng gói và mã hóa.
+          </p>
+          <a
+            href="#"
+            class="btn secondary"
+            style="padding: 10px 20px; font-size: 14px"
+          >
+            🔗 Mở khóa GitHub Repository
+          </a>
+        </div>
+
+        <div
+          class="ar-container"
+          style="padding: 30px; border-left: 4px solid #0065bd; margin: 0"
+        >
+          <h3 style="margin-top: 0; font-size: 1.4rem; color: #fff">
+            [REF] Cơ sở lý thuyết đồ họa
+          </h3>
+          <ul
+            style="
+              margin-left: 20px;
+              color: var(--text-muted);
+              line-height: 1.8;
+            "
+          >
+            <li>
+              Tài liệu hướng dẫn tối ưu GLTF/GLB compression cho môi trường Web.
+            </li>
+            <li>Khung chuẩn Model-viewer documentation của Google.</li>
+            <li>Phương pháp ánh xạ UV Mapping & Ambient Occlusion (AO).</li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <vku-footer></vku-footer>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trang chủ - VKU AR DrawRoom</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">INITIALIZING WEBXR ENGINE...</div>
+    </div>
+
+    <vku-header></vku-header>
+
+    <main
+      style="
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh;
+      "
+    >
+      <h1 class="gradient-text" style="font-size: 3.5rem; margin-bottom: 10px">
+        Mô Phỏng Không Gian<br />Phòng Học Vẽ VKU
+      </h1>
+
+      <p
+        style="
+          font-size: 1.2rem;
+          max-width: 650px;
+          margin-bottom: 40px;
+          color: var(--text-muted);
+        "
+      >
+        Bước vào không gian số với công nghệ Thực tế tăng cường. Trực quan hóa
+        và trải nghiệm phòng học vẽ kỹ thuật số ngay trên trình duyệt của bạn.
+      </p>
+
+      <div
+        style="
+          display: flex;
+          gap: 20px;
+          justify-content: center;
+          flex-wrap: wrap;
+        "
+      >
+        <a href="demo-ar.html" class="btn-sweep">
+          <span>🚀 Khởi động AR Engine</span>
+        </a>
+
+        <a href="gioi-thieu.html" class="btn secondary">
+          📖 Tìm hiểu Công nghệ
+        </a>
+      </div>
+    </main>
+
+    <vku-footer></vku-footer>
+  </body>
+</html>

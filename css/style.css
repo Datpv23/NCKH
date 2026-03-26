@@ -1,0 +1,564 @@
+/* css/style.css - BẢN ULTIMATE SCI-FI AR */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
+
+:root {
+    --vku-red: #ff2a4b;
+    --vku-red-glow: rgba(255, 42, 75, 0.4);
+    --vku-blue-dark: #070f1e;
+    --vku-blue-light: #122343;
+    --vku-blue-brand: #0065bd;
+    --vku-blue-brand-glow: rgba(0, 101, 189, 0.5);
+    --vku-gold: #ffc107;
+    --vku-gold-glow: rgba(255, 193, 7, 0.3);
+    --ar-cyan: #00e5ff;
+    --ar-cyan-glow: rgba(0, 229, 255, 0.5);
+    --text-main: #f0f4f8;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(18, 35, 67, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--vku-blue-dark);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+}
+
+/* 1. HOLOGRAPHIC BACKGROUND */
+body::before,
+body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    z-index: -1;
+    pointer-events: none;
+    animation: floatOrb 20s infinite alternate ease-in-out;
+}
+
+body::before {
+    top: -10%;
+    left: -10%;
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(255, 42, 75, 0.15) 0%, transparent 70%);
+}
+
+body::after {
+    bottom: -20%;
+    right: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(1, 60, 120, 0.3) 0%, transparent 70%);
+    animation-direction: alternate-reverse;
+    animation-duration: 25s;
+}
+
+@keyframes floatOrb {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(15%, 15%) scale(1.3);
+    }
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--vku-blue-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--vku-blue-light);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--vku-red);
+}
+
+main {
+    padding: 60px 5%;
+    min-height: 80vh;
+    animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+h1,
+h2,
+h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+}
+
+.gradient-text {
+    background: linear-gradient(to right, #ffffff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+}
+
+/* 2. BUTTON SCI-FI TIA SÁNG CHẠY QUANH VIỀN */
+.btn-sweep {
+    position: relative;
+    display: inline-flex;
+    background: rgba(255, 42, 75, 0.1);
+    border-radius: 50px;
+    padding: 2px;
+    overflow: hidden;
+    text-decoration: none;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 20px rgba(255, 42, 75, 0.2);
+}
+
+.btn-sweep::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(transparent, transparent, transparent, var(--vku-red));
+    animation: rotateLight 3s linear infinite;
+    z-index: 1;
+}
+
+@keyframes rotateLight {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.btn-sweep span {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vku-blue-dark);
+    color: #fff;
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: 0.3s;
+}
+
+.btn-sweep:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 10px 30px var(--vku-red-glow);
+}
+
+.btn-sweep:hover span {
+    background: rgba(7, 15, 30, 0.8);
+}
+
+.btn.secondary {
+    display: inline-flex;
+    background: var(--glass-bg);
+    color: var(--vku-gold);
+    border: 1px solid var(--vku-gold);
+    border-radius: 50px;
+    padding: 14px 32px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    text-decoration: none;
+    transition: 0.3s;
+    box-shadow: 0 0 15px var(--vku-gold-glow);
+}
+
+.btn.secondary:hover {
+    background: var(--vku-gold);
+    color: var(--vku-blue-dark);
+    transform: translateY(-5px);
+}
+
+/* 3. HEADER GLASSMORPHISM */
+header {
+    background-color: rgba(7, 15, 30, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 15px 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    font-family: 'Space Grotesk', sans-serif;
+    color: #fff;
+    font-size: 26px;
+    font-weight: 700;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+}
+
+.vku-letter {
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+/* V - Đỏ */
+.vku-letter.red {
+    color: var(--vku-red);
+    text-shadow: 0 0 15px var(--vku-red-glow);
+}
+
+/* K - Xanh dương */
+.vku-letter.blue {
+    color: var(--vku-blue-brand);
+    text-shadow: 0 0 15px var(--vku-blue-brand-glow);
+    margin: 0 2px;
+}
+
+/* U - Vàng VKU */
+.vku-letter.gold {
+    color: var(--vku-gold);
+    text-shadow: 0 0 15px var(--vku-gold-glow);
+}
+
+/* Chữ AR - Xanh ngọc phát sáng */
+.ar-tag {
+    color: var(--ar-cyan);
+    margin-left: 10px;
+    margin-right: 8px;
+    font-size: 0.9em;
+    text-shadow: 0 0 12px var(--ar-cyan-glow);
+    letter-spacing: 2px;
+    /* Kéo giãn nhẹ chữ AR cho ngầu */
+}
+
+/* Hiệu ứng khi di chuột vào logo: Tất cả cùng sáng rực lên */
+.logo:hover .vku-letter.red {
+    text-shadow: 0 0 25px var(--vku-red), 0 0 40px var(--vku-red-glow);
+}
+
+.logo:hover .vku-letter.blue {
+    text-shadow: 0 0 25px var(--vku-blue-brand), 0 0 40px var(--vku-blue-brand-glow);
+}
+
+.logo:hover .vku-letter.gold {
+    text-shadow: 0 0 25px var(--vku-gold), 0 0 40px var(--vku-gold-glow);
+}
+
+.logo:hover .ar-tag {
+    text-shadow: 0 0 25px var(--ar-cyan), 0 0 40px var(--ar-cyan-glow);
+}
+
+/* Hiệu ứng khi di chuột vào logo: Chữ sáng rực lên */
+.logo:hover .vku-letter.red {
+    text-shadow: 0 0 25px var(--vku-red), 0 0 40px var(--vku-red-glow);
+}
+
+.logo:hover .vku-letter.blue {
+    text-shadow: 0 0 25px var(--vku-blue-brand), 0 0 40px var(--vku-blue-brand-glow);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 35px;
+}
+
+.nav-links li a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    transition: 0.3s ease;
+    position: relative;
+    padding: 8px 0;
+}
+
+.nav-links li a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0px;
+    height: 2px;
+    background-color: var(--vku-red);
+    transition: 0.3s ease;
+    border-radius: 2px;
+    box-shadow: 0 0 10px var(--vku-red);
+}
+
+.nav-links li a:hover,
+.nav-links li a.active {
+    color: #fff;
+}
+
+.nav-links li a:hover::after,
+.nav-links li a.active::after {
+    width: 100%;
+}
+
+/* 4. AR & 3D VIEWER CONTAINER */
+.ar-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 24px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    position: relative;
+    transition: transform 0.4s ease;
+    margin-bottom: 40px;
+}
+
+.ar-container:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+model-viewer {
+    width: 100%;
+    height: 70vh;
+    border-radius: 16px;
+    outline: none;
+    background-color: #0b1426;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+.ar-button {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-radius: 50px;
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 30px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+.ar-button:hover {
+    background: var(--vku-red);
+    border-color: var(--vku-red);
+    box-shadow: 0 0 20px var(--vku-red-glow);
+    transform: translateX(-50%) translateY(-5px);
+}
+
+/* 5. SPLASH SCREEN (MÀN HÌNH KHỞI ĐỘNG) */
+#splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--vku-blue-dark);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.loader-core {
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--vku-red);
+    border-bottom-color: var(--vku-gold);
+    border-radius: 50%;
+    animation: spinSystem 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.loader-text {
+    margin-top: 20px;
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-muted);
+    font-size: 14px;
+    letter-spacing: 3px;
+    animation: pulseText 1.5s infinite alternate;
+}
+
+@keyframes spinSystem {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulseText {
+    0% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+        color: #fff;
+        text-shadow: 0 0 10px #fff;
+    }
+}
+
+body.loaded #splash-screen {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* 6. CUSTOM CURSOR */
+@media (min-width: 768px) {
+
+    body,
+    a,
+    button,
+    .menu-toggle,
+    model-viewer {
+        cursor: none !important;
+    }
+}
+
+.custom-cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    background: var(--vku-red);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--vku-red);
+}
+
+.custom-cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s, height 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.custom-cursor-ring.hovered {
+    width: 50px;
+    height: 50px;
+    border-color: var(--vku-gold);
+    background-color: rgba(255, 193, 7, 0.1);
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.2);
+}
+
+/* FOOTER & MOBILE RESPONSIVE */
+footer {
+    background-color: rgba(7, 15, 30, 0.9);
+    border-top: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    text-align: center;
+    padding: 40px 20px;
+    margin-top: 60px;
+    font-size: 14px;
+}
+
+footer span {
+    color: var(--vku-red);
+    font-weight: 700;
+}
+
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: rgba(7, 15, 30, 0.95);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .nav-links.show {
+        max-height: 400px;
+    }
+
+    .nav-links li a {
+        display: block;
+        padding: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+    }
+
+    .nav-links li a::after {
+        display: none;
+    }
+
+    .nav-links li a.active {
+        color: var(--vku-red);
+        background: rgba(255, 42, 75, 0.05);
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    model-viewer {
+        height: 55vh;
+    }
+}

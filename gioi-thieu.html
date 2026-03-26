@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giới thiệu - VKU AR DrawRoom</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">LOADING DATABANKS...</div>
+    </div>
+
+    <vku-header></vku-header>
+
+    <main>
+      <h1
+        class="gradient-text"
+        style="text-align: center; font-size: 2.8rem; margin-bottom: 30px"
+      >
+        Giới Thiệu Hệ Thống
+      </h1>
+
+      <div
+        class="ar-container"
+        style="max-width: 800px; margin: 0 auto; padding: 40px"
+      >
+        <h3
+          style="
+            color: var(--vku-red);
+            margin-top: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          "
+        >
+          <span
+            style="
+              display: inline-block;
+              width: 10px;
+              height: 10px;
+              background: var(--vku-red);
+              border-radius: 50%;
+              box-shadow: 0 0 10px var(--vku-red);
+            "
+          ></span>
+          1. Đặt vấn đề
+        </h3>
+        <p style="color: var(--text-muted); margin-bottom: 25px">
+          Việc tiếp cận các không gian thực hành mỹ thuật tại trường Đại học đôi
+          khi bị giới hạn. Dự án "Mô phỏng không gian phòng học thực hành vẽ
+          VKU" ra đời nhằm giải quyết bài toán này thông qua công nghệ ảo hóa
+          không gian (Spatial Computing).
+        </p>
+
+        <h3
+          style="
+            color: var(--vku-gold);
+            margin-top: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          "
+        >
+          <span
+            style="
+              display: inline-block;
+              width: 10px;
+              height: 10px;
+              background: var(--vku-gold);
+              border-radius: 50%;
+              box-shadow: 0 0 10px var(--vku-gold);
+            "
+          ></span>
+          2. Mục tiêu nghiên cứu
+        </h3>
+        <ul
+          style="
+            margin-left: 20px;
+            margin-bottom: 25px;
+            color: var(--text-muted);
+          "
+        >
+          <li style="margin-bottom: 10px">
+            Số hóa không gian vật lý (giá vẽ, tượng thạch cao, bàn ghế) thành mô
+            hình 3D tối ưu.
+          </li>
+          <li style="margin-bottom: 10px">
+            Xây dựng nền tảng WebXR cho phép tương tác Hologram qua trình duyệt.
+          </li>
+          <li>
+            Nâng cao trải nghiệm học tập và trực quan hóa cơ sở vật chất của
+            VKU.
+          </li>
+        </ul>
+
+        <h3
+          style="
+            color: #4ade80;
+            margin-top: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          "
+        >
+          <span
+            style="
+              display: inline-block;
+              width: 10px;
+              height: 10px;
+              background: #4ade80;
+              border-radius: 50%;
+              box-shadow: 0 0 10px #4ade80;
+            "
+          ></span>
+          3. Lõi Công nghệ (Tech Core)
+        </h3>
+        <div
+          style="
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 3px solid #4ade80;
+          "
+        >
+          <p style="color: var(--text-main); margin-bottom: 5px">
+            <strong>Model Rendering:</strong> Google Model-Viewer & WebXR API
+          </p>
+          <p style="color: var(--text-main); margin-bottom: 5px">
+            <strong>3D Pipeline:</strong> Blender (Retopology & GLTF/GLB
+            Compression)
+          </p>
+          <p style="color: var(--text-main)">
+            <strong>Frontend:</strong> HTML5, CSS3 Glassmorphism, Vanilla JS
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <vku-footer></vku-footer>
+  </body>
+</html>
