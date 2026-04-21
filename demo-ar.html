@@ -1,188 +1,387 @@
 <!doctype html>
 <html lang="vi">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demo AR - VKU AR DrawRoom</title>
+    <title>VKU AR - Full CMS & Cloudinary Edition</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
-    <script
-      type="module"
-      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
-    ></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
-    <!-- Thêm CSS riêng cho Menu chọn mô hình kiểu App Mobile -->
     <style>
-      .model-carousel {
-        display: flex;
-        overflow-x: auto;
-        gap: 15px;
-        padding: 15px 5px;
-        margin-top: 15px;
-        /* Ẩn thanh cuộn cho đẹp */
-        scrollbar-width: none; 
-        -ms-overflow-style: none; 
-      }
-      .model-carousel::-webkit-scrollbar {
-        display: none; 
-      }
-      
-      .model-card {
-        flex: 0 0 auto;
-        width: 110px;
-        background: rgba(18, 35, 67, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 15px 10px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        color: var(--text-muted);
-        backdrop-filter: blur(5px);
-      }
-      
-      .model-card:hover {
-        background: rgba(255, 255, 255, 0.05);
-        transform: translateY(-3px);
-      }
-      
-      /* Hiệu ứng khi Card đang được chọn */
-      .model-card.active {
-        border-color: var(--ar-cyan, #00e5ff);
-        background: rgba(0, 229, 255, 0.08);
-        color: #fff;
-        box-shadow: 0 0 20px rgba(0, 229, 255, 0.2), inset 0 0 10px rgba(0, 229, 255, 0.1);
-      }
-      
-      .model-icon {
-        font-size: 28px;
-        margin-bottom: 8px;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-      }
-      
-      .model-name {
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'Space Grotesk', sans-serif;
-        line-height: 1.2;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="splash-screen">
-      <div class="loader-core"></div>
-      <div class="loader-text">INITIALIZING AR CAMERA...</div>
-    </div>
+        /* --- TÙY CHỈNH KHU VỰC AR --- */
+        .ar-container { position: relative; max-width: 900px; margin: 0 auto; overflow: hidden; border-radius: 16px; }
+        .menu-toggle-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 10;
+            background: rgba(18, 35, 67, 0.85); color: white; border: 1px solid var(--ar-cyan, #00e5ff);
+            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px);
+        }
+        .menu-toggle-btn:hover { background: rgba(0, 229, 255, 0.2); }
 
+        /* --- SIDEBAR MENU --- */
+        .side-menu {
+            position: absolute; top: 0; left: -100%; width: 300px; height: 100%;
+            background: rgba(11, 20, 38, 0.95); z-index: 20; transition: left 0.4s ease; 
+            display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        }
+        .side-menu.open { left: 0; }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
+        .menu-header h3 { margin: 0; font-size: 16px; }
+        .icon-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+        .icon-btn:hover { color: #00e5ff; }
+        #back-btn { display: none; font-size: 14px; color: #94a3b8; }
+        .menu-content { flex: 1; overflow-y: auto; padding: 15px; }
+
+        /* Nút chung */
+        .category-item {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; margin-bottom: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;
+            display: flex; justify-content: space-between;
+        }
+        .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: #00e5ff; }
+
+        /* --- LƯỚI VẬT THỂ & NÚT XÓA --- */
+        .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .model-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center; position: relative;
+        }
+        .model-card:hover { border-color: #00e5ff; }
+        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #fff; }
+        .model-name { padding: 8px 5px; color: white; font-size: 11px; font-weight: 600; }
+        
+        .delete-btn {
+            position: absolute; top: 5px; right: 5px; background: rgba(200, 16, 46, 0.9);
+            color: white; border: none; border-radius: 5px; padding: 4px; font-size: 12px; cursor: pointer;
+        }
+        .delete-btn:hover { background: red; transform: scale(1.1); }
+
+        /* Nút thêm mới */
+        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        
+        /* --- MODAL THÊM VẬT THỂ --- */
+        #admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
+            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
+        .form-group input[type="text"], .form-group select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
+        }
+        .form-group input[type="file"] {
+            width: 100%; padding: 8px; font-size: 13px; color: #94a3b8;
+            background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px;
+        }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
     <vku-header></vku-header>
 
     <main>
-      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
-        Truy Cập AR Camera
-      </h1>
-
-      <div
-        style="
-          max-width: 700px;
-          margin: 0 auto 30px auto;
-          background: rgba(255, 193, 7, 0.1);
-          border: 1px solid rgba(255, 193, 7, 0.3);
-          padding: 15px 25px;
-          border-radius: 12px;
-          text-align: center;
-        "
-      >
-        <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
-          <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
-          Vuốt chọn mô hình bên dưới. Nhấn nút <strong>Khởi động Hologram</strong> trên điện thoại để mở Camera và quét mặt sàn.
-        </p>
-      </div>
-
-      <div class="ar-container" style="max-width: 900px; margin: 0 auto">
-        
-        <!-- KHUNG HIỂN THỊ MÔ HÌNH -->
-        <model-viewer
-          id="ar-viewer"
-          src="models/living room_furniture.glb"
-          ar
-          ar-modes="webxr scene-viewer quick-look"
-          camera-controls
-          shadow-intensity="1.5"
-          environment-image="neutral"
-          style="width: 100%; height: 50vh; border-radius: 16px;"
-        >
-          <button slot="ar-button" class="ar-button">
-            <svg
-              viewBox="0 0 24 24"
-              style="width: 20px; height: 20px; fill: currentColor"
-            >
-              <path
-                d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"
-              />
-            </svg>
-            Khởi động Hologram
-          </button>
-
-          <div
-            slot="progress-bar"
-            style="
-              background: linear-gradient(90deg, transparent, var(--vku-red));
-              height: 4px;
-              display: block;
-              position: absolute;
-              bottom: 0;
-              width: 100%;
-            "
-          ></div>
-        </model-viewer>
-
-        <!-- DANH SÁCH CHỌN MÔ HÌNH (CAROUSEL) -->
-        <div class="model-carousel">
-            
-            <!-- Thẻ 1 -->
-            <div class="model-card active" onclick="selectModel('models/living room_furniture.glb', this)">
-                <div class="model-icon">🛋️</div>
-                <div class="model-name">Phòng Khách</div>
-            </div>
-
-            <!-- Thẻ 2 -->
-            <div class="model-card" onclick="selectModel('models/phong_hoc_thpt_phong_phu.glb', this)">
-                <div class="model-icon">🏫</div>
-                <div class="model-name">Phòng Vẽ VKU</div>
-            </div>
-
-            <!-- Thẻ 3 -->
-            <div class="model-card" onclick="selectModel('models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb', this)">
-                <div class="model-icon">🦅</div>
-                <div class="model-name">Thunderbird</div>
-            </div>
-
-            <!-- BẠN CÓ THỂ COPY THÊM THẺ (CARD) Ở ĐÂY NẾU CÓ THÊM MÔ HÌNH -->
-            <!-- <div class="model-card" onclick="selectModel('models/ten_file_cua_ban.glb', this)">
-                <div class="model-icon">🗿</div>
-                <div class="model-name">Tượng Thạch Cao</div>
-            </div> -->
-
+        <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">Truy Cập AR Camera</h1>
+        <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
+            <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
+                <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
+                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
+            </p>
         </div>
-      </div>
+
+        <div class="ar-container">
+            <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
+
+            <div id="side-menu" class="side-menu">
+                <div class="menu-header">
+                    <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
+                    <h3 id="menu-title">Danh Mục</h3>
+                    <button class="icon-btn" onclick="toggleMenu()">✖</button>
+                </div>
+                <div id="menu-content" class="menu-content"><p style="color: #00e5ff;">Đang tải...</p></div>
+                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
+                </div>
+            </div>
+            
+            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
+                <button slot="ar-button" class="ar-button">
+                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                    Khởi động Hologram
+                </button>
+            </model-viewer>
+        </div>
     </main>
 
-    <vku-footer></vku-footer>
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
+            <form id="add-form" onsubmit="submitNewModel(event)">
+                <div class="form-group">
+                    <label>Tên hiển thị:</label>
+                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
+                </div>
+                <div class="form-group">
+                    <label>Danh mục (Lấy từ Firebase):</label>
+                    <select id="inp-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
+                    <input type="file" id="inp-image-file" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Chọn File 3D (.glb):</label>
+                    <input type="file" id="inp-model-file" accept=".glb" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <!-- SCRIPT XỬ LÝ CHUYỂN ĐỔI MÔ HÌNH -->
-    <script>
-      function selectModel(srcUrl, clickedCard) {
-        // 1. Thay đổi nguồn file 3D của model-viewer
-        const viewer = document.getElementById('ar-viewer');
-        viewer.src = srcUrl;
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 2. Xóa trạng thái 'active' (phát sáng) ở tất cả các thẻ
-        const allCards = document.querySelectorAll('.model-card');
-        allCards.forEach(card => card.classList.remove('active'));
+        // ==========================================
+        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
+        // ==========================================
+        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
 
-        // 3. Thêm trạng thái 'active' cho thẻ vừa được bấm
-        clickedCard.classList.add('active');
-      }
+        // ==========================================
+        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
+        // ==========================================
+        const firebaseConfig = {
+  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+  authDomain: "vku-ar-project.firebaseapp.com",
+  projectId: "vku-ar-project",
+  storageBucket: "vku-ar-project.firebasestorage.app",
+  messagingSenderId: "595437202444",
+  appId: "1:595437202444:web:7939802383d326eee75229",
+  measurementId: "G-QS4HC8MPGT"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let categoryDisplayNames = {}; 
+        let modelDatabase = {};        
+
+        const menuContent = document.getElementById('menu-content');
+        const menuTitle = document.getElementById('menu-title');
+        const backBtn = document.getElementById('back-btn');
+        const arViewer = document.getElementById('ar-viewer');
+        const sideMenu = document.getElementById('side-menu');
+
+        window.toggleMenu = function() {
+            sideMenu.classList.toggle('open');
+            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
+                renderCategories();
+            }
+        }
+
+        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
+        window.fetchFromFirebase = async function() {
+            try {
+                // Tải danh mục
+                const catSnapshot = await getDocs(collection(db, "categories"));
+                categoryDisplayNames = {};
+                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
+
+                // Tải vật thể
+                const modelSnapshot = await getDocs(collection(db, "models"));
+                modelDatabase = {}; 
+                let firstModelUrl = "";
+
+                modelSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const catCode = data.category || "khac"; 
+                    if (!modelDatabase[catCode]) modelDatabase[catCode] = [];
+
+                    modelDatabase[catCode].push({
+                        id: doc.id, 
+                        name: data.name || "Chưa tên",
+                        url: data.url,
+                        image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
+                    });
+                    if(!firstModelUrl) firstModelUrl = data.url;
+                });
+
+                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
+                renderCategories();
+
+            } catch (error) {
+                console.error("Lỗi:", error);
+                menuContent.innerHTML = '<p style="color: #ff2a4b;">Lỗi kết nối Firebase!</p>';
+            }
+        }
+
+        // VẼ DANH MỤC LÊN SIDEBAR
+        window.renderCategories = function() {
+            menuTitle.innerText = "Danh Mục Đồ Vật";
+            backBtn.style.display = 'none'; 
+            menuContent.innerHTML = ''; 
+
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const div = document.createElement('div');
+                div.className = 'category-item';
+                div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
+                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
+                menuContent.appendChild(div);
+            });
+        }
+
+        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
+        window.renderItems = function(catCode, displayName) {
+            menuTitle.innerText = displayName; 
+            backBtn.style.display = 'block'; 
+            menuContent.innerHTML = ''; 
+            
+            const items = modelDatabase[catCode] || [];
+            if(items.length === 0) { menuContent.innerHTML = "<p style='color:gray;'>Chưa có vật thể.</p>"; return; }
+
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'items-grid';
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteModel('${item.id}', event)">🗑️</button>
+                    <img src="${item.image}" class="model-img" loading="lazy">
+                    <div class="model-name">${item.name}</div>
+                `;
+
+                card.onclick = () => {
+                    arViewer.src = item.url;
+                    window.toggleMenu(); 
+                };
+
+                gridDiv.appendChild(card);
+            });
+            menuContent.appendChild(gridDiv);
+        }
+
+        // XÓA VẬT THỂ
+        window.deleteModel = async function(docId, event) {
+            event.stopPropagation(); 
+            const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
+            if (confirmDelete) {
+                try {
+                    await deleteDoc(doc(db, "models", docId)); 
+                    alert("Đã xóa thành công!");
+                    fetchFromFirebase(); 
+                } catch (error) {
+                    alert("Lỗi khi xóa: " + error.message);
+                }
+            }
+        }
+
+        // QUẢN LÝ MODAL (FORM)
+        window.openModal = function() {
+            const selectEl = document.getElementById('inp-category');
+            selectEl.innerHTML = ''; 
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const option = document.createElement('option');
+                option.value = catCode;
+                option.text = categoryDisplayNames[catCode];
+                selectEl.appendChild(option);
+            });
+            document.getElementById('admin-modal').style.display = 'flex';
+        }
+
+        window.closeModal = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
+            document.getElementById('btn-save').disabled = false;
+            document.getElementById('btn-save').style.background = "#00e5ff";
+        }
+
+        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
+        async function uploadFileToCloudinary(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+
+            const response = await fetch(CLOUDINARY_URL, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.secure_url) {
+                return data.secure_url;
+            } else {
+                throw new Error(data.error?.message || "Tải file thất bại");
+            }
+        }
+
+        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
+        window.submitNewModel = async function(event) {
+            event.preventDefault(); 
+            
+            const btnSave = document.getElementById('btn-save');
+            const imgFile = document.getElementById('inp-image-file').files[0];
+            const modelFile = document.getElementById('inp-model-file').files[0];
+
+            if(!imgFile || !modelFile) {
+                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
+                return;
+            }
+
+            // Khóa nút bấm và đổi hiệu ứng
+            btnSave.disabled = true;
+            btnSave.style.background = "#475569"; 
+
+            try {
+                // 1. Tải ảnh hiển thị
+                btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
+                const imageUrl = await uploadFileToCloudinary(imgFile);
+
+                // 2. Tải mô hình 3D (Đợi hơi lâu)
+                btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
+                const modelUrl = await uploadFileToCloudinary(modelFile);
+
+                // 3. Đẩy thông tin vào Firebase
+                btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
+                const newModel = {
+                    name: document.getElementById('inp-name').value,
+                    category: document.getElementById('inp-category').value,
+                    image: imageUrl,
+                    url: modelUrl
+                };
+
+                await addDoc(collection(db, "models"), newModel);
+                
+                alert("🎉 Đã thêm vật thể mới thành công!");
+                closeModal();
+                fetchFromFirebase(); 
+
+            } catch (error) {
+                console.error("Lỗi Upload:", error);
+                alert("🚨 Lỗi: " + error.message);
+                
+                // Mở khóa nút nếu bị lỗi
+                btnSave.innerText = "Thử lại";
+                btnSave.disabled = false;
+                btnSave.style.background = "#ff2a4b";
+            }
+        }
+
+        // BẮT ĐẦU CHẠY APP
+        fetchFromFirebase();
     </script>
-  </body>
+</body>
 </html>
