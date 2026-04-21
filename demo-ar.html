@@ -2,386 +2,933 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VKU AR - Full CMS & Cloudinary Edition</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="js/components.js" defer></script>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>VKU AR — Room Builder</title>
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- AR.js for A-Frame (marker + location based) -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-        /* --- TÙY CHỈNH KHU VỰC AR --- */
-        .ar-container { position: relative; max-width: 900px; margin: 0 auto; overflow: hidden; border-radius: 16px; }
-        .menu-toggle-btn {
-            position: absolute; top: 15px; left: 15px; z-index: 10;
-            background: rgba(18, 35, 67, 0.85); color: white; border: 1px solid var(--ar-cyan, #00e5ff);
-            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px);
-        }
-        .menu-toggle-btn:hover { background: rgba(0, 229, 255, 0.2); }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap');
 
-        /* --- SIDEBAR MENU --- */
-        .side-menu {
-            position: absolute; top: 0; left: -100%; width: 300px; height: 100%;
-            background: rgba(11, 20, 38, 0.95); z-index: 20; transition: left 0.4s ease; 
-            display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        :root {
+            --cyan: #00e5ff;
+            --cyan-dim: rgba(0, 229, 255, 0.15);
+            --navy: #060d1a;
+            --navy-2: #0b1426;
+            --navy-3: #122343;
+            --gold: #ffc107;
+            --red: #ff2a4b;
+            --glass: rgba(11, 20, 38, 0.92);
+            --border: rgba(0, 229, 255, 0.2);
         }
-        .side-menu.open { left: 0; }
-        .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
-        .menu-header h3 { margin: 0; font-size: 16px; }
-        .icon-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
-        .icon-btn:hover { color: #00e5ff; }
-        #back-btn { display: none; font-size: 14px; color: #94a3b8; }
-        .menu-content { flex: 1; overflow-y: auto; padding: 15px; }
 
-        /* Nút chung */
-        .category-item {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            padding: 15px; margin-bottom: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;
-            display: flex; justify-content: space-between;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--navy);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
-        .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: #00e5ff; }
 
-        /* --- LƯỚI VẬT THỂ & NÚT XÓA --- */
-        .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        /* ── SPLASH ── */
+        #splash {
+            position: fixed; inset: 0; z-index: 9999;
+            background: var(--navy);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 24px;
+        }
+        #splash.hidden { display: none; }
+        .splash-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.4rem; font-weight: 900;
+            color: var(--cyan);
+            text-shadow: 0 0 40px rgba(0,229,255,0.6);
+            letter-spacing: 4px;
+        }
+        .splash-sub { color: #94a3b8; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
+        .ring {
+            width: 60px; height: 60px;
+            border: 3px solid transparent;
+            border-top-color: var(--cyan);
+            border-right-color: rgba(0,229,255,0.3);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── AR SCENE WRAPPER ── */
+        #ar-wrapper {
+            position: fixed; inset: 0; z-index: 0;
+        }
+        #ar-wrapper a-scene {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        /* ── TOP HUD ── */
+        #top-hud {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(6,13,26,0.9) 0%, transparent 100%);
+            pointer-events: none;
+        }
+        .hud-brand {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px; font-weight: 700;
+            color: var(--cyan); letter-spacing: 3px;
+            pointer-events: auto;
+        }
+        #mode-badge {
+            background: var(--cyan-dim);
+            border: 1px solid var(--border);
+            color: var(--cyan); font-size: 11px;
+            padding: 4px 12px; border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            pointer-events: auto;
+        }
+
+        /* ── BOTTOM TOOLBAR ── */
+        #toolbar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+            padding: 12px 16px 24px;
+            background: linear-gradient(to top, rgba(6,13,26,0.95) 0%, transparent 100%);
+            display: flex; gap: 10px; align-items: flex-end;
+        }
+        .tool-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: white; padding: 10px 14px; border-radius: 12px;
+            font-size: 10px; font-family: 'DM Sans', sans-serif;
+            cursor: pointer; transition: all 0.25s; backdrop-filter: blur(10px);
+            white-space: nowrap; user-select: none;
+        }
+        .tool-btn .icon { font-size: 20px; }
+        .tool-btn:hover, .tool-btn.active {
+            background: rgba(0,229,255,0.15);
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px rgba(0,229,255,0.2);
+        }
+        .tool-btn.danger:hover {
+            background: rgba(255,42,75,0.15);
+            border-color: var(--red);
+            color: var(--red);
+        }
+        #btn-add-obj { flex: 1; }
+        #object-count-badge {
+            background: var(--cyan); color: var(--navy);
+            font-size: 9px; font-weight: 700;
+            padding: 1px 6px; border-radius: 10px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* ── CROSSHAIR ── */
+        #crosshair {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #crosshair svg { filter: drop-shadow(0 0 6px rgba(0,229,255,0.8)); }
+        #crosshair.placing { opacity: 1; }
+        #crosshair.idle { opacity: 0.3; }
+
+        /* ── PLACE HINT ── */
+        #place-hint {
+            position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
+            z-index: 100; pointer-events: none;
+            background: rgba(0,229,255,0.1);
+            border: 1px solid var(--border);
+            color: var(--cyan); font-size: 12px;
+            padding: 8px 20px; border-radius: 20px;
+            font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+            transition: opacity 0.4s;
+            text-align: center;
+        }
+        #place-hint.hidden { opacity: 0; }
+
+        /* ── OBJECT PANEL (SIDEBAR) ── */
+        #obj-panel {
+            position: fixed; left: 0; top: 0; bottom: 0;
+            width: 300px; z-index: 200;
+            background: var(--glass);
+            border-right: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+            display: flex; flex-direction: column;
+        }
+        #obj-panel.open { transform: translateX(0); }
+        .panel-header {
+            padding: 16px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px; color: var(--cyan); flex: 1; letter-spacing: 2px;
+        }
+        .panel-close {
+            background: none; border: none; color: #64748b;
+            font-size: 18px; cursor: pointer; transition: color 0.2s;
+        }
+        .panel-close:hover { color: var(--red); }
+        .panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-track { background: transparent; }
+        .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* Category tabs */
+        .cat-tabs {
+            display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+        }
+        .cat-tab {
+            padding: 5px 12px; border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8; font-size: 11px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cat-tab.active, .cat-tab:hover {
+            background: var(--cyan-dim);
+            border-color: var(--cyan); color: var(--cyan);
+        }
+
+        /* Model grid */
+        .model-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
         .model-card {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center; position: relative;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; overflow: hidden;
+            cursor: pointer; transition: all 0.2s; position: relative;
         }
-        .model-card:hover { border-color: #00e5ff; }
-        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #fff; }
-        .model-name { padding: 8px 5px; color: white; font-size: 11px; font-weight: 600; }
-        
-        .delete-btn {
-            position: absolute; top: 5px; right: 5px; background: rgba(200, 16, 46, 0.9);
-            color: white; border: none; border-radius: 5px; padding: 4px; font-size: 12px; cursor: pointer;
+        .model-card:hover {
+            border-color: var(--cyan);
+            box-shadow: 0 0 16px rgba(0,229,255,0.15);
+            transform: translateY(-2px);
         }
-        .delete-btn:hover { background: red; transform: scale(1.1); }
+        .model-card.selected {
+            border-color: var(--cyan);
+            background: var(--cyan-dim);
+            box-shadow: 0 0 20px rgba(0,229,255,0.25);
+        }
+        .model-card img {
+            width: 100%; height: 75px; object-fit: cover;
+            background: #fff;
+        }
+        .model-card-name {
+            padding: 6px 8px;
+            font-size: 10px; font-weight: 500;
+            color: #cbd5e1;
+        }
+        .model-select-check {
+            position: absolute; top: 6px; right: 6px;
+            background: var(--cyan); color: var(--navy);
+            border-radius: 50%; width: 18px; height: 18px;
+            font-size: 10px; font-weight: 700;
+            display: none; align-items: center; justify-content: center;
+        }
+        .model-card.selected .model-select-check { display: flex; }
 
-        /* Nút thêm mới */
-        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
-        
-        /* --- MODAL THÊM VẬT THỂ --- */
-        #admin-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        /* Panel footer */
+        .panel-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border);
         }
-        .modal-content {
-            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
-            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+        .btn-place {
+            width: 100%; padding: 12px;
+            background: var(--cyan); color: var(--navy);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px; font-weight: 700; letter-spacing: 2px;
+            border: none; border-radius: 10px; cursor: pointer;
+            transition: all 0.2s;
         }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
-        .form-group input[type="text"], .form-group select {
-            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
+        .btn-place:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,229,255,0.35); }
+        .btn-place:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ── SCENE OBJECTS LIST ── */
+        #scene-panel {
+            position: fixed; right: 0; top: 0; bottom: 0;
+            width: 240px; z-index: 200;
+            background: var(--glass);
+            border-left: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+            display: flex; flex-direction: column;
         }
-        .form-group input[type="file"] {
-            width: 100%; padding: 8px; font-size: 13px; color: #94a3b8;
-            background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px;
+        #scene-panel.open { transform: translateX(0); }
+        .scene-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer; transition: background 0.2s;
+        }
+        .scene-item:hover { background: rgba(0,229,255,0.05); }
+        .scene-item.selected-item { background: var(--cyan-dim); }
+        .scene-item-icon { font-size: 18px; }
+        .scene-item-name { flex: 1; font-size: 12px; color: #cbd5e1; }
+        .scene-item-del {
+            background: none; border: none; color: #475569;
+            font-size: 14px; cursor: pointer; transition: color 0.2s; padding: 2px 4px;
+        }
+        .scene-item-del:hover { color: var(--red); }
+        #no-objects-msg {
+            text-align: center; color: #475569; font-size: 12px;
+            padding: 30px 16px; line-height: 1.7;
+        }
+
+        /* ── TRANSFORM CONTROLS (khi chọn object) ── */
+        #transform-bar {
+            position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+            z-index: 150;
+            display: none; gap: 8px; align-items: center;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 8px 12px; border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+        #transform-bar.visible { display: flex; }
+        .t-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white; padding: 6px 10px; border-radius: 8px;
+            font-size: 11px; cursor: pointer; transition: all 0.2s;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .t-btn:hover { background: var(--cyan-dim); border-color: var(--cyan); color: var(--cyan); }
+        .t-sep { width: 1px; height: 20px; background: var(--border); }
+        .t-label { color: #64748b; font-size: 10px; font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
+
+        /* ── ADD MODEL MODAL ── */
+        #add-modal {
+            display: none; position: fixed; inset: 0; z-index: 999;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center;
+        }
+        #add-modal.open { display: flex; }
+        .modal-box {
+            background: var(--navy-3);
+            border: 1px solid var(--cyan);
+            border-radius: 16px; padding: 24px;
+            width: 90%; max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0,229,255,0.15);
+        }
+        .modal-box h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--cyan); font-size: 14px;
+            letter-spacing: 2px; margin-bottom: 20px; text-align: center;
+        }
+        .form-row { margin-bottom: 14px; }
+        .form-row label { display: block; font-size: 11px; color: #64748b; margin-bottom: 5px; letter-spacing: 1px; text-transform: uppercase; }
+        .form-row input, .form-row select {
+            width: 100%; padding: 10px 12px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; color: white; font-size: 13px;
+        }
+        .form-row input[type="file"] { padding: 8px; color: #94a3b8; font-size: 12px; }
+        .form-row input:focus, .form-row select:focus {
+            outline: none; border-color: var(--cyan);
         }
         .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
-        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
-        .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
+        .btn-cancel { flex: 1; padding: 11px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-submit {
+            flex: 2; padding: 11px;
+            background: var(--cyan); color: var(--navy);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px; font-weight: 700;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── TOAST ── */
+        #toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            z-index: 500;
+            background: var(--navy-3); border: 1px solid var(--border);
+            color: var(--cyan); font-size: 12px; font-family: 'Orbitron', sans-serif;
+            padding: 10px 20px; border-radius: 20px; letter-spacing: 1px;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        #toast.show { opacity: 1; }
+
+        /* LOADING overlay */
+        #loading-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9000;
+            background: rgba(6,13,26,0.85); backdrop-filter: blur(4px);
+            align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+        }
+        #loading-overlay.show { display: flex; }
+        #loading-msg { color: var(--cyan); font-family: 'Orbitron', sans-serif; font-size: 13px; letter-spacing: 2px; }
     </style>
 </head>
 <body>
-    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
-    <vku-header></vku-header>
 
-    <main>
-        <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">Truy Cập AR Camera</h1>
-        <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
-            <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
-                <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
-                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
-            </p>
-        </div>
+<!-- SPLASH -->
+<div id="splash">
+    <div class="splash-logo">VKU AR</div>
+    <div class="ring"></div>
+    <div class="splash-sub">Room Builder — Loading...</div>
+</div>
 
-        <div class="ar-container">
-            <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+    <div class="ring"></div>
+    <div id="loading-msg">UPLOADING...</div>
+</div>
 
-            <div id="side-menu" class="side-menu">
-                <div class="menu-header">
-                    <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
-                    <h3 id="menu-title">Danh Mục</h3>
-                    <button class="icon-btn" onclick="toggleMenu()">✖</button>
-                </div>
-                <div id="menu-content" class="menu-content"><p style="color: #00e5ff;">Đang tải...</p></div>
-                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
-                </div>
-            </div>
-            
-            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
-                <button slot="ar-button" class="ar-button">
-                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                    Khởi động Hologram
-                </button>
-            </model-viewer>
-        </div>
-    </main>
+<!-- TOAST -->
+<div id="toast"></div>
 
-    <div id="admin-modal">
-        <div class="modal-content">
-            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
-            <form id="add-form" onsubmit="submitNewModel(event)">
-                <div class="form-group">
-                    <label>Tên hiển thị:</label>
-                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
-                </div>
-                <div class="form-group">
-                    <label>Danh mục (Lấy từ Firebase):</label>
-                    <select id="inp-category" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
-                    <input type="file" id="inp-image-file" accept="image/*" required>
-                </div>
-                <div class="form-group">
-                    <label>Chọn File 3D (.glb):</label>
-                    <input type="file" id="inp-model-file" accept=".glb" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
-                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
-                </div>
-            </form>
+<!-- TOP HUD -->
+<div id="top-hud">
+    <div class="hud-brand">VKU · AR</div>
+    <div id="mode-badge">ROOM BUILDER</div>
+</div>
+
+<!-- CROSSHAIR -->
+<div id="crosshair" class="idle">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#00e5ff" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="24" y1="4" x2="24" y2="14" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        <line x1="24" y1="34" x2="24" y2="44" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        <line x1="4" y1="24" x2="14" y2="24" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        <line x1="34" y1="24" x2="44" y2="24" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="24" cy="24" r="3" fill="#00e5ff"/>
+    </svg>
+</div>
+
+<!-- PLACE HINT -->
+<div id="place-hint" class="hidden">TAP MÀN HÌNH ĐỂ ĐẶT VẬT THỂ</div>
+
+<!-- TRANSFORM BAR (khi đang chọn 1 vật thể) -->
+<div id="transform-bar">
+    <span class="t-label">CHỌN:</span>
+    <button class="t-btn" onclick="rotateSelected(-45)">↺ -45°</button>
+    <button class="t-btn" onclick="rotateSelected(45)">↻ +45°</button>
+    <div class="t-sep"></div>
+    <button class="t-btn" onclick="scaleSelected(1.2)">＋ To</button>
+    <button class="t-btn" onclick="scaleSelected(0.8)">－ Nhỏ</button>
+    <div class="t-sep"></div>
+    <button class="t-btn" onclick="deselectObject()" style="color:#64748b">✖</button>
+</div>
+
+<!-- BOTTOM TOOLBAR -->
+<div id="toolbar">
+    <button class="tool-btn" id="btn-add-obj" onclick="openObjPanel()">
+        <span class="icon">➕</span>
+        <span>Thêm Đồ</span>
+    </button>
+    <button class="tool-btn" onclick="openScenePanel()">
+        <span class="icon">📋</span>
+        <span>Danh sách <span id="object-count-badge">0</span></span>
+    </button>
+    <button class="tool-btn" onclick="openAddModal()">
+        <span class="icon">⬆️</span>
+        <span>Upload</span>
+    </button>
+    <button class="tool-btn danger" onclick="clearAllObjects()">
+        <span class="icon">🗑️</span>
+        <span>Xóa Hết</span>
+    </button>
+</div>
+
+<!-- OBJECT SELECTION PANEL (LEFT) -->
+<div id="obj-panel">
+    <div class="panel-header">
+        <div class="panel-title">CHỌN ĐỒ VẬT</div>
+        <button class="panel-close" onclick="closeObjPanel()">✖</button>
+    </div>
+    <div class="panel-body">
+        <div class="cat-tabs" id="cat-tabs"></div>
+        <div class="model-grid" id="model-grid">
+            <div style="color:#475569; font-size:12px; grid-column:span 2; text-align:center; padding: 20px 0;">Đang tải dữ liệu...</div>
         </div>
     </div>
+    <div class="panel-footer">
+        <button class="btn-place" id="btn-place" onclick="enterPlacingMode()" disabled>
+            CHỌN ĐỂ ĐẶT VÀO PHÒNG
+        </button>
+    </div>
+</div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+<!-- SCENE OBJECTS PANEL (RIGHT) -->
+<div id="scene-panel">
+    <div class="panel-header">
+        <div class="panel-title">TRONG PHÒNG</div>
+        <button class="panel-close" onclick="closeScenePanel()">✖</button>
+    </div>
+    <div class="panel-body" id="scene-list">
+        <div id="no-objects-msg">
+            Chưa có đồ vật nào.<br><br>
+            Nhấn <strong style="color:var(--cyan)">Thêm Đồ</strong> để bắt đầu setup phòng.
+        </div>
+    </div>
+</div>
 
-        // ==========================================
-        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
-        // ==========================================
-        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
-        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
+<!-- ADD MODEL MODAL -->
+<div id="add-modal">
+    <div class="modal-box">
+        <h3>UPLOAD VẬT THỂ MỚI</h3>
+        <div class="form-row">
+            <label>Tên hiển thị</label>
+            <input type="text" id="inp-name" placeholder="VD: Bàn học gỗ">
+        </div>
+        <div class="form-row">
+            <label>Danh mục</label>
+            <select id="inp-category"></select>
+        </div>
+        <div class="form-row">
+            <label>Ảnh thumbnail (.png/.jpg)</label>
+            <input type="file" id="inp-img" accept="image/*">
+        </div>
+        <div class="form-row">
+            <label>File 3D (.glb)</label>
+            <input type="file" id="inp-glb" accept=".glb">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeAddModal()">Hủy</button>
+            <button class="btn-submit" id="btn-upload" onclick="submitUpload()">UPLOAD & LƯU</button>
+        </div>
+    </div>
+</div>
 
-        // ==========================================
-        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
-        // ==========================================
-        const firebaseConfig = {
-  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-  authDomain: "vku-ar-project.firebaseapp.com",
-  projectId: "vku-ar-project",
-  storageBucket: "vku-ar-project.firebasestorage.app",
-  messagingSenderId: "595437202444",
-  appId: "1:595437202444:web:7939802383d326eee75229",
-  measurementId: "G-QS4HC8MPGT"
+<!-- AR SCENE -->
+<div id="ar-wrapper">
+    <a-scene
+        id="ar-scene"
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true;"
+        loading-screen="enabled: false"
+    >
+        <a-assets id="a-assets"></a-assets>
+
+        <!-- Mặt phẳng hit-test ảo (vô hình) để tap đặt vật -->
+        <a-plane
+            id="ground-plane"
+            rotation="-90 0 0"
+            width="50" height="50"
+            material="opacity: 0; transparent: true"
+            class="clickable"
+        ></a-plane>
+
+        <!-- Container chứa tất cả đồ vật được đặt -->
+        <a-entity id="objects-container"></a-entity>
+
+        <!-- Grid helper (lưới sàn mờ) -->
+        <a-entity id="floor-grid">
+            <a-plane
+                rotation="-90 0 0"
+                width="10" height="10"
+                material="color: #00e5ff; opacity: 0.04; transparent: true; wireframe: true"
+            ></a-plane>
+        </a-entity>
+
+        <a-camera
+            id="ar-camera"
+            gps-projected-camera
+            rotation-reader
+            cursor="fuse: false; rayOrigin: mouse;"
+            raycaster="objects: .clickable"
+        >
+            <a-cursor
+                color="#00e5ff"
+                opacity="0.7"
+                scale="0.5 0.5 0.5"
+            ></a-cursor>
+        </a-camera>
+    </a-scene>
+</div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import {
+    getFirestore, collection, getDocs, addDoc, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// ── CONFIG ──────────────────────────────────────────
+const CLOUDINARY_URL    = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+const CLOUDINARY_PRESET = "vku_ar_preset";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+    authDomain: "vku-ar-project.firebaseapp.com",
+    projectId: "vku-ar-project",
+    storageBucket: "vku-ar-project.firebasestorage.app",
+    messagingSenderId: "595437202444",
+    appId: "1:595437202444:web:7939802383d326eee75229"
 };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
-        let categoryDisplayNames = {}; 
-        let modelDatabase = {};        
+// ── STATE ────────────────────────────────────────────
+let categories    = {};   // { catCode: "Tên danh mục" }
+let modelDatabase = {};   // { catCode: [ {id, name, url, image}, … ] }
+let activeCat     = null;
+let selectedModel = null; // model đang được chọn để đặt
+let placingMode   = false;
+let sceneObjects  = [];   // [ {id, name, entityEl} ]
+let selectedObjId = null;
+let objectIdCounter = 0;
 
-        const menuContent = document.getElementById('menu-content');
-        const menuTitle = document.getElementById('menu-title');
-        const backBtn = document.getElementById('back-btn');
-        const arViewer = document.getElementById('ar-viewer');
-        const sideMenu = document.getElementById('side-menu');
+// ── FIREBASE LOAD ────────────────────────────────────
+async function fetchData() {
+    try {
+        const catSnap = await getDocs(collection(db, "categories"));
+        categories = {};
+        catSnap.forEach(d => { categories[d.id] = d.data().name; });
 
-        window.toggleMenu = function() {
-            sideMenu.classList.toggle('open');
-            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
-                renderCategories();
-            }
-        }
-
-        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
-        window.fetchFromFirebase = async function() {
-            try {
-                // Tải danh mục
-                const catSnapshot = await getDocs(collection(db, "categories"));
-                categoryDisplayNames = {};
-                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
-
-                // Tải vật thể
-                const modelSnapshot = await getDocs(collection(db, "models"));
-                modelDatabase = {}; 
-                let firstModelUrl = "";
-
-                modelSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const catCode = data.category || "khac"; 
-                    if (!modelDatabase[catCode]) modelDatabase[catCode] = [];
-
-                    modelDatabase[catCode].push({
-                        id: doc.id, 
-                        name: data.name || "Chưa tên",
-                        url: data.url,
-                        image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
-                    });
-                    if(!firstModelUrl) firstModelUrl = data.url;
-                });
-
-                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
-                renderCategories();
-
-            } catch (error) {
-                console.error("Lỗi:", error);
-                menuContent.innerHTML = '<p style="color: #ff2a4b;">Lỗi kết nối Firebase!</p>';
-            }
-        }
-
-        // VẼ DANH MỤC LÊN SIDEBAR
-        window.renderCategories = function() {
-            menuTitle.innerText = "Danh Mục Đồ Vật";
-            backBtn.style.display = 'none'; 
-            menuContent.innerHTML = ''; 
-
-            Object.keys(categoryDisplayNames).forEach(catCode => {
-                const div = document.createElement('div');
-                div.className = 'category-item';
-                div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
-                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
-                menuContent.appendChild(div);
+        const modSnap = await getDocs(collection(db, "models"));
+        modelDatabase = {};
+        modSnap.forEach(d => {
+            const data = d.data();
+            const cat  = data.category || "khac";
+            if (!modelDatabase[cat]) modelDatabase[cat] = [];
+            modelDatabase[cat].push({
+                id:    d.id,
+                name:  data.name  || "Chưa tên",
+                url:   data.url,
+                image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
             });
-        }
+        });
 
-        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
-        window.renderItems = function(catCode, displayName) {
-            menuTitle.innerText = displayName; 
-            backBtn.style.display = 'block'; 
-            menuContent.innerHTML = ''; 
-            
-            const items = modelDatabase[catCode] || [];
-            if(items.length === 0) { menuContent.innerHTML = "<p style='color:gray;'>Chưa có vật thể.</p>"; return; }
+        renderCategoryTabs();
+        document.getElementById('splash').classList.add('hidden');
+        showToast("✅ Dữ liệu đã tải xong");
 
-            const gridDiv = document.createElement('div');
-            gridDiv.className = 'items-grid';
+    } catch(err) {
+        console.error(err);
+        document.getElementById('splash').querySelector('.splash-sub').textContent = "❌ Lỗi kết nối Firebase";
+    }
+}
 
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.innerHTML = `
-                    <button class="delete-btn" onclick="deleteModel('${item.id}', event)">🗑️</button>
-                    <img src="${item.image}" class="model-img" loading="lazy">
-                    <div class="model-name">${item.name}</div>
-                `;
+// ── RENDER CATEGORY TABS ─────────────────────────────
+function renderCategoryTabs() {
+    const tabsEl = document.getElementById('cat-tabs');
+    tabsEl.innerHTML = '';
+    Object.entries(categories).forEach(([code, name], i) => {
+        const btn = document.createElement('button');
+        btn.className = 'cat-tab' + (i === 0 ? ' active' : '');
+        btn.textContent = name;
+        btn.onclick = () => {
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            activeCat = code;
+            renderModelGrid(code);
+        };
+        tabsEl.appendChild(btn);
+        if (i === 0) activeCat = code;
+    });
+    if (activeCat) renderModelGrid(activeCat);
+}
 
-                card.onclick = () => {
-                    arViewer.src = item.url;
-                    window.toggleMenu(); 
-                };
+// ── RENDER MODEL GRID ────────────────────────────────
+function renderModelGrid(catCode) {
+    const grid  = document.getElementById('model-grid');
+    const items = modelDatabase[catCode] || [];
+    grid.innerHTML = '';
 
-                gridDiv.appendChild(card);
-            });
-            menuContent.appendChild(gridDiv);
-        }
+    if (items.length === 0) {
+        grid.innerHTML = '<div style="color:#475569;font-size:12px;grid-column:span 2;text-align:center;padding:20px 0;">Chưa có vật thể nào.</div>';
+        return;
+    }
 
-        // XÓA VẬT THỂ
-        window.deleteModel = async function(docId, event) {
-            event.stopPropagation(); 
-            const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
-            if (confirmDelete) {
-                try {
-                    await deleteDoc(doc(db, "models", docId)); 
-                    alert("Đã xóa thành công!");
-                    fetchFromFirebase(); 
-                } catch (error) {
-                    alert("Lỗi khi xóa: " + error.message);
-                }
-            }
-        }
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'model-card' + (selectedModel?.id === item.id ? ' selected' : '');
+        card.innerHTML = `
+            <img src="${item.image}" loading="lazy">
+            <div class="model-card-name">${item.name}</div>
+            <div class="model-select-check">✓</div>
+        `;
+        card.onclick = () => selectModel(item, card);
+        grid.appendChild(card);
+    });
+}
 
-        // QUẢN LÝ MODAL (FORM)
-        window.openModal = function() {
-            const selectEl = document.getElementById('inp-category');
-            selectEl.innerHTML = ''; 
-            Object.keys(categoryDisplayNames).forEach(catCode => {
-                const option = document.createElement('option');
-                option.value = catCode;
-                option.text = categoryDisplayNames[catCode];
-                selectEl.appendChild(option);
-            });
-            document.getElementById('admin-modal').style.display = 'flex';
-        }
+// ── SELECT MODEL ─────────────────────────────────────
+function selectModel(item, cardEl) {
+    selectedModel = item;
+    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+    cardEl.classList.add('selected');
+    document.getElementById('btn-place').disabled = false;
+    document.getElementById('btn-place').textContent = `ĐẶT: ${item.name.toUpperCase()}`;
+}
 
-        window.closeModal = function() {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('add-form').reset();
-            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
-            document.getElementById('btn-save').disabled = false;
-            document.getElementById('btn-save').style.background = "#00e5ff";
-        }
+// ── ENTER PLACING MODE ───────────────────────────────
+window.enterPlacingMode = function() {
+    if (!selectedModel) return;
+    placingMode = true;
+    closeObjPanel();
+    document.getElementById('crosshair').className = 'placing';
+    document.getElementById('place-hint').classList.remove('hidden');
+    document.getElementById('place-hint').textContent = `TAP ĐỂ ĐẶT: ${selectedModel.name.toUpperCase()}`;
+    showToast("Tap vào mặt sàn để đặt vật thể");
+}
 
-        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
-        async function uploadFileToCloudinary(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', CLOUDINARY_PRESET);
+// ── PLACE OBJECT vào scene ────────────────────────────
+function placeObject(x, y, z) {
+    if (!selectedModel || !placingMode) return;
 
-            const response = await fetch(CLOUDINARY_URL, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            if (data.secure_url) {
-                return data.secure_url;
-            } else {
-                throw new Error(data.error?.message || "Tải file thất bại");
-            }
-        }
+    const assetsEl    = document.getElementById('a-assets');
+    const containerEl = document.getElementById('objects-container');
 
-        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
-        window.submitNewModel = async function(event) {
-            event.preventDefault(); 
-            
-            const btnSave = document.getElementById('btn-save');
-            const imgFile = document.getElementById('inp-image-file').files[0];
-            const modelFile = document.getElementById('inp-model-file').files[0];
+    const objId   = `obj_${++objectIdCounter}`;
+    const assetId = `asset_${objId}`;
 
-            if(!imgFile || !modelFile) {
-                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
-                return;
-            }
+    // Thêm asset
+    const assetEl = document.createElement('a-asset-item');
+    assetEl.id    = assetId;
+    assetEl.setAttribute('src', selectedModel.url);
+    assetsEl.appendChild(assetEl);
 
-            // Khóa nút bấm và đổi hiệu ứng
-            btnSave.disabled = true;
-            btnSave.style.background = "#475569"; 
+    // Tạo entity
+    const entity = document.createElement('a-entity');
+    entity.id    = objId;
+    entity.setAttribute('gltf-model', `#${assetId}`);
+    entity.setAttribute('position',   `${x} ${y} ${z}`);
+    entity.setAttribute('rotation',   '0 0 0');
+    entity.setAttribute('scale',      '1 1 1');
+    entity.setAttribute('class',      'clickable placed-object');
+    entity.setAttribute('shadow',     'receive: true');
+    entity.addEventListener('click',  () => selectSceneObject(objId));
+    containerEl.appendChild(entity);
 
-            try {
-                // 1. Tải ảnh hiển thị
-                btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
-                const imageUrl = await uploadFileToCloudinary(imgFile);
+    // Lưu vào state
+    sceneObjects.push({
+        id:    objId,
+        name:  selectedModel.name,
+        model: selectedModel,
+        entityEl: entity
+    });
 
-                // 2. Tải mô hình 3D (Đợi hơi lâu)
-                btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
-                const modelUrl = await uploadFileToCloudinary(modelFile);
+    updateBadge();
+    updateSceneList();
+    showToast(`✅ Đã đặt: ${selectedModel.name}`);
 
-                // 3. Đẩy thông tin vào Firebase
-                btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
-                const newModel = {
-                    name: document.getElementById('inp-name').value,
-                    category: document.getElementById('inp-category').value,
-                    image: imageUrl,
-                    url: modelUrl
-                };
+    // Thoát placing mode sau khi đặt
+    exitPlacingMode();
+}
 
-                await addDoc(collection(db, "models"), newModel);
-                
-                alert("🎉 Đã thêm vật thể mới thành công!");
-                closeModal();
-                fetchFromFirebase(); 
+function exitPlacingMode() {
+    placingMode = false;
+    document.getElementById('crosshair').className = 'idle';
+    document.getElementById('place-hint').classList.add('hidden');
+}
 
-            } catch (error) {
-                console.error("Lỗi Upload:", error);
-                alert("🚨 Lỗi: " + error.message);
-                
-                // Mở khóa nút nếu bị lỗi
-                btnSave.innerText = "Thử lại";
-                btnSave.disabled = false;
-                btnSave.style.background = "#ff2a4b";
-            }
-        }
+// ── HANDLE TAP vào màn hình ──────────────────────────
+document.addEventListener('click', function(e) {
+    // Bỏ qua nếu click vào UI
+    if (e.target.closest('#obj-panel, #scene-panel, #toolbar, #transform-bar, #add-modal, #top-hud')) return;
+    if (!placingMode || !selectedModel) return;
 
-        // BẮT ĐẦU CHẠY APP
-        fetchFromFirebase();
-    </script>
+    // Tính toán vị trí đặt vật thể dựa trên tâm màn hình
+    // Vì AR.js với webcam không có hit-test thực sự như WebXR,
+    // chúng ta đặt vật thể theo raycasting từ camera xuống ground plane
+    const groundEl = document.getElementById('ground-plane');
+    const camera   = document.querySelector('#ar-camera');
+    
+    // Lấy position từ camera và offset ra trước
+    const camPos = camera.getAttribute('position') || {x:0, y:1.6, z:0};
+    const camRot = camera.getAttribute('rotation') || {x:0, y:0, z:0};
+    
+    // Đặt vật thể cách camera 1.5m về phía trước
+    const angleY = (camRot.y * Math.PI) / 180;
+    const dist   = 1.5;
+    const px     = (camPos.x || 0) - Math.sin(angleY) * dist;
+    const pz     = (camPos.z || 0) - Math.cos(angleY) * dist;
+
+    placeObject(px, 0, pz);
+});
+
+// ── SELECT OBJECT IN SCENE ───────────────────────────
+function selectSceneObject(objId) {
+    deselectObject();
+    selectedObjId = objId;
+    const obj = sceneObjects.find(o => o.id === objId);
+    if (!obj) return;
+
+    obj.entityEl.setAttribute('material', 'emissive: #00e5ff; emissiveIntensity: 0.1');
+    document.getElementById('transform-bar').classList.add('visible');
+    updateSceneList();
+}
+
+window.deselectObject = function() {
+    if (selectedObjId) {
+        const obj = sceneObjects.find(o => o.id === selectedObjId);
+        if (obj) obj.entityEl.removeAttribute('material');
+    }
+    selectedObjId = null;
+    document.getElementById('transform-bar').classList.remove('visible');
+    updateSceneList();
+}
+
+// ── TRANSFORM: ROTATE ────────────────────────────────
+window.rotateSelected = function(deg) {
+    if (!selectedObjId) return;
+    const obj = sceneObjects.find(o => o.id === selectedObjId);
+    if (!obj) return;
+    const rot = obj.entityEl.getAttribute('rotation') || {x:0, y:0, z:0};
+    obj.entityEl.setAttribute('rotation', `${rot.x} ${rot.y + deg} ${rot.z}`);
+}
+
+// ── TRANSFORM: SCALE ─────────────────────────────────
+window.scaleSelected = function(factor) {
+    if (!selectedObjId) return;
+    const obj = sceneObjects.find(o => o.id === selectedObjId);
+    if (!obj) return;
+    const sc = obj.entityEl.getAttribute('scale') || {x:1, y:1, z:1};
+    const ns = Math.max(0.1, sc.x * factor);
+    obj.entityEl.setAttribute('scale', `${ns} ${ns} ${ns}`);
+}
+
+// ── DELETE OBJECT ────────────────────────────────────
+window.deleteSceneObject = function(objId) {
+    const idx = sceneObjects.findIndex(o => o.id === objId);
+    if (idx === -1) return;
+    sceneObjects[idx].entityEl.parentNode.removeChild(sceneObjects[idx].entityEl);
+    sceneObjects.splice(idx, 1);
+    if (selectedObjId === objId) { selectedObjId = null; document.getElementById('transform-bar').classList.remove('visible'); }
+    updateBadge();
+    updateSceneList();
+    showToast("🗑️ Đã xóa vật thể");
+}
+
+// ── CLEAR ALL ────────────────────────────────────────
+window.clearAllObjects = function() {
+    if (sceneObjects.length === 0) { showToast("Phòng đã trống!"); return; }
+    if (!confirm(`Xóa tất cả ${sceneObjects.length} vật thể?`)) return;
+    sceneObjects.forEach(o => o.entityEl.parentNode.removeChild(o.entityEl));
+    sceneObjects = [];
+    selectedObjId = null;
+    document.getElementById('transform-bar').classList.remove('visible');
+    updateBadge();
+    updateSceneList();
+    showToast("🗑️ Đã xóa tất cả");
+}
+
+// ── UPDATE SCENE LIST ─────────────────────────────────
+function updateSceneList() {
+    const listEl = document.getElementById('scene-list');
+    if (sceneObjects.length === 0) {
+        listEl.innerHTML = '<div id="no-objects-msg">Chưa có đồ vật nào.<br><br>Nhấn <strong style="color:var(--cyan)">Thêm Đồ</strong> để bắt đầu setup phòng.</div>';
+        return;
+    }
+    listEl.innerHTML = '';
+    sceneObjects.forEach((obj, i) => {
+        const item = document.createElement('div');
+        item.className = 'scene-item' + (obj.id === selectedObjId ? ' selected-item' : '');
+        item.innerHTML = `
+            <span class="scene-item-icon">📦</span>
+            <span class="scene-item-name">${i+1}. ${obj.name}</span>
+            <button class="scene-item-del" onclick="deleteSceneObject('${obj.id}')">✕</button>
+        `;
+        item.onclick = (e) => { if(!e.target.closest('.scene-item-del')) selectSceneObject(obj.id); };
+        listEl.appendChild(item);
+    });
+}
+
+function updateBadge() {
+    document.getElementById('object-count-badge').textContent = sceneObjects.length;
+}
+
+// ── PANEL CONTROLS ───────────────────────────────────
+window.openObjPanel   = function() { document.getElementById('obj-panel').classList.add('open'); closeScenePanel(); exitPlacingMode(); }
+window.closeObjPanel  = function() { document.getElementById('obj-panel').classList.remove('open'); }
+window.openScenePanel = function() { document.getElementById('scene-panel').classList.add('open'); closeObjPanel(); }
+window.closeScenePanel = function() { document.getElementById('scene-panel').classList.remove('open'); }
+
+// ── UPLOAD MODAL ──────────────────────────────────────
+window.openAddModal = function() {
+    const sel = document.getElementById('inp-category');
+    sel.innerHTML = '';
+    Object.entries(categories).forEach(([code, name]) => {
+        const opt = document.createElement('option');
+        opt.value = code; opt.text = name;
+        sel.appendChild(opt);
+    });
+    document.getElementById('add-modal').classList.add('open');
+}
+window.closeAddModal = function() {
+    document.getElementById('add-modal').classList.remove('open');
+}
+
+async function uploadToCloudinary(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    const res  = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.secure_url) return data.secure_url;
+    throw new Error(data.error?.message || "Upload thất bại");
+}
+
+window.submitUpload = async function() {
+    const name    = document.getElementById('inp-name').value.trim();
+    const catCode = document.getElementById('inp-category').value;
+    const imgFile = document.getElementById('inp-img').files[0];
+    const glbFile = document.getElementById('inp-glb').files[0];
+
+    if (!name || !imgFile || !glbFile) { showToast("⚠️ Vui lòng điền đủ thông tin"); return; }
+
+    const btn = document.getElementById('btn-upload');
+    btn.disabled = true;
+
+    const overlay = document.getElementById('loading-overlay');
+    const msgEl   = document.getElementById('loading-msg');
+    overlay.classList.add('show');
+
+    try {
+        msgEl.textContent = "ĐANG TẢI ẢNH...";
+        const imageUrl = await uploadToCloudinary(imgFile);
+
+        msgEl.textContent = "ĐANG TẢI MÔ HÌNH 3D...";
+        const modelUrl = await uploadToCloudinary(glbFile);
+
+        msgEl.textContent = "ĐANG LƯU VÀO FIREBASE...";
+        await addDoc(collection(db, "models"), {
+            name: name, category: catCode, image: imageUrl, url: modelUrl
+        });
+
+        closeAddModal();
+        showToast("🎉 Đã thêm vật thể mới!");
+        await fetchData();
+
+    } catch(err) {
+        showToast("❌ Lỗi: " + err.message);
+    } finally {
+        overlay.classList.remove('show');
+        btn.disabled = false;
+    }
+}
+
+// ── TOAST ─────────────────────────────────────────────
+window.showToast = function(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── INIT ──────────────────────────────────────────────
+fetchData();
+</script>
+
 </body>
 </html>
