@@ -3,1135 +3,385 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VKU AR — Room Builder</title>
+    <title>VKU AR - Full CMS & Cloudinary Edition</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* ── OVERRIDE: ẩn main padding khi AR đang chạy ── */
-        main { padding: 40px 5%; }
+        /* --- TÙY CHỈNH KHU VỰC AR --- */
+        .ar-container { position: relative; max-width: 900px; margin: 0 auto; overflow: hidden; border-radius: 16px; }
+        .menu-toggle-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 10;
+            background: rgba(18, 35, 67, 0.85); color: white; border: 1px solid var(--ar-cyan, #00e5ff);
+            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px);
+        }
+        .menu-toggle-btn:hover { background: rgba(0, 229, 255, 0.2); }
 
-        /* ════════════════════════════════
-           SECTION TRƯỚC KHI VÀO AR
-        ════════════════════════════════ */
-        .ar-launch-wrap {
-            max-width: 860px;
-            margin: 0 auto;
+        /* --- SIDEBAR MENU --- */
+        .side-menu {
+            position: absolute; top: 0; left: -100%; width: 300px; height: 100%;
+            background: rgba(11, 20, 38, 0.95); z-index: 20; transition: left 0.4s ease; 
+            display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
         }
+        .side-menu.open { left: 0; }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
+        .menu-header h3 { margin: 0; font-size: 16px; }
+        .icon-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+        .icon-btn:hover { color: #00e5ff; }
+        #back-btn { display: none; font-size: 14px; color: #94a3b8; }
+        .menu-content { flex: 1; overflow-y: auto; padding: 15px; }
 
-        .protocol-box {
-            background: rgba(255,193,7,0.08);
-            border: 1px solid rgba(255,193,7,0.25);
-            padding: 14px 22px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 14px;
-            color: var(--vku-gold);
+        /* Nút chung */
+        .category-item {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; margin-bottom: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;
+            display: flex; justify-content: space-between;
         }
-        .protocol-box strong { font-family: 'Space Grotesk', sans-serif; }
+        .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: #00e5ff; }
 
-        /* Nút khởi động AR lớn */
-        #btn-start-ar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            width: 100%;
-            padding: 22px;
-            background: linear-gradient(135deg, rgba(255,42,75,0.15), rgba(0,229,255,0.08));
-            border: 1px solid rgba(0,229,255,0.3);
-            border-radius: 16px;
-            color: var(--ar-cyan);
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 30px rgba(0,229,255,0.1);
-        }
-        #btn-start-ar:hover {
-            background: linear-gradient(135deg, rgba(255,42,75,0.2), rgba(0,229,255,0.15));
-            border-color: var(--ar-cyan);
-            box-shadow: 0 0 40px rgba(0,229,255,0.25);
-            transform: translateY(-3px);
-        }
-        #btn-start-ar:disabled {
-            opacity: 0.4; cursor: not-allowed; transform: none;
-        }
-        #btn-start-ar svg { width: 28px; height: 28px; fill: currentColor; flex-shrink: 0; }
-
-        /* Compat warning */
-        #compat-warn {
-            display: none;
-            margin-top: 16px;
-            padding: 14px 20px;
-            background: rgba(255,42,75,0.1);
-            border: 1px solid rgba(255,42,75,0.3);
-            border-radius: 10px;
-            color: #ff8099;
-            font-size: 13px;
-            line-height: 1.7;
-        }
-        #compat-warn.show { display: block; }
-
-        /* ════════════════════════════════
-           AR OVERLAY — full screen khi đang AR
-        ════════════════════════════════ */
-        #ar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 5000;
-            background: transparent;
-        }
-        #ar-overlay.active { display: block; }
-
-        /* Canvas THREE.js */
-        #ar-canvas {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* ── TOP BAR ── */
-        #ar-topbar {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(to bottom, rgba(7,15,30,0.85) 0%, transparent 100%);
-            z-index: 10;
-            pointer-events: none;
-        }
-        .ar-brand {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 14px; font-weight: 700;
-            color: var(--ar-cyan);
-            letter-spacing: 3px;
-            text-shadow: 0 0 12px var(--ar-cyan-glow);
-        }
-        #ar-status-badge {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 11px;
-            padding: 4px 14px;
-            border-radius: 20px;
-            border: 1px solid rgba(0,229,255,0.3);
-            background: rgba(0,229,255,0.08);
-            color: var(--ar-cyan);
-            letter-spacing: 1px;
-            pointer-events: auto;
-        }
-        #btn-exit-ar {
-            background: rgba(255,42,75,0.15);
-            border: 1px solid rgba(255,42,75,0.4);
-            color: var(--vku-red);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            pointer-events: auto;
-            transition: all 0.2s;
-        }
-        #btn-exit-ar:hover { background: rgba(255,42,75,0.3); }
-
-        /* ── RETICLE HINT ── */
-        #scan-hint {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            text-align: center;
-            pointer-events: none;
-            transition: opacity 0.5s;
-        }
-        #scan-hint.hidden { opacity: 0; }
-        .scan-ring {
-            width: 80px; height: 80px;
-            border: 2px dashed rgba(0,229,255,0.6);
-            border-radius: 50%;
-            margin: 0 auto 12px;
-            animation: rotateScan 4s linear infinite;
-        }
-        @keyframes rotateScan {
-            to { transform: rotate(360deg); }
-        }
-        #scan-hint p {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 13px; letter-spacing: 2px;
-            color: rgba(0,229,255,0.8);
-        }
-
-        /* ── PLACE HINT ── */
-        #place-hint {
-            position: absolute;
-            bottom: 120px; left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 12px; letter-spacing: 2px;
-            color: var(--ar-cyan);
-            background: rgba(7,15,30,0.75);
-            border: 1px solid rgba(0,229,255,0.25);
-            padding: 8px 20px;
-            border-radius: 20px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.4s;
-            white-space: nowrap;
-        }
-        #place-hint.show { opacity: 1; }
-
-        /* ── TRANSFORM BAR (hiện khi chọn object) ── */
-        #transform-bar {
-            position: absolute;
-            top: 60px; left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            display: none;
-            gap: 6px;
-            align-items: center;
-            background: rgba(7,15,30,0.88);
-            border: 1px solid rgba(0,229,255,0.2);
-            padding: 8px 12px;
-            border-radius: 30px;
-            backdrop-filter: blur(10px);
-        }
-        #transform-bar.show { display: flex; }
-        .tb-btn {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.12);
-            color: #cbd5e1;
-            padding: 6px 11px;
-            border-radius: 8px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: 'Space Grotesk', sans-serif;
-            white-space: nowrap;
-        }
-        .tb-btn:hover { background: rgba(0,229,255,0.12); border-color: var(--ar-cyan); color: var(--ar-cyan); }
-        .tb-btn.del:hover { background: rgba(255,42,75,0.15); border-color: var(--vku-red); color: var(--vku-red); }
-        .tb-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
-        .tb-label { color: #475569; font-size: 10px; font-family: 'Space Grotesk', sans-serif; letter-spacing: 1px; }
-
-        /* ── BOTTOM TOOLBAR ── */
-        #ar-toolbar {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            padding: 12px 14px 28px;
-            background: linear-gradient(to top, rgba(7,15,30,0.92) 0%, transparent 100%);
-            display: flex;
-            gap: 8px;
-            align-items: flex-end;
-            z-index: 10;
-        }
-        .ar-tool-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
-            background: rgba(18,35,67,0.7);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #94a3b8;
-            padding: 10px 13px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-family: 'Space Grotesk', sans-serif;
-            cursor: pointer;
-            transition: all 0.2s;
-            backdrop-filter: blur(8px);
-            letter-spacing: 0.5px;
-            user-select: none;
-        }
-        .ar-tool-btn .ico { font-size: 20px; }
-        .ar-tool-btn:hover, .ar-tool-btn.active {
-            background: rgba(0,229,255,0.12);
-            border-color: var(--ar-cyan);
-            color: var(--ar-cyan);
-        }
-        .ar-tool-btn.danger:hover {
-            background: rgba(255,42,75,0.12);
-            border-color: var(--vku-red);
-            color: var(--vku-red);
-        }
-        #btn-pick { flex: 1; }
-        #obj-count {
-            background: var(--ar-cyan);
-            color: #070f1e;
-            font-size: 9px; font-weight: 700;
-            padding: 1px 7px; border-radius: 10px;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        /* ── OBJECT PICKER PANEL ── */
-        #picker-panel {
-            position: absolute;
-            left: 0; top: 0; bottom: 0;
-            width: 290px;
-            background: rgba(7,15,30,0.94);
-            border-right: 1px solid rgba(0,229,255,0.15);
-            backdrop-filter: blur(16px);
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-        }
-        #picker-panel.open { transform: translateX(0); }
-        .pp-header {
-            padding: 14px 14px 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-            display: flex; align-items: center; gap: 8px;
-        }
-        .pp-title {
-            flex: 1;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 12px; font-weight: 700;
-            color: var(--ar-cyan); letter-spacing: 2px;
-        }
-        .pp-close {
-            background: none; border: none;
-            color: #475569; font-size: 16px;
-            cursor: pointer; transition: color 0.2s;
-        }
-        .pp-close:hover { color: var(--vku-red); }
-        .pp-body { flex: 1; overflow-y: auto; padding: 10px; }
-        .pp-body::-webkit-scrollbar { width: 3px; }
-        .pp-body::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.2); border-radius: 2px; }
-
-        /* Cat tabs */
-        .cat-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
-        .cat-tab {
-            padding: 4px 11px; border-radius: 20px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #64748b; font-size: 11px; cursor: pointer;
-            transition: all 0.2s; font-family: 'Space Grotesk', sans-serif;
-        }
-        .cat-tab.active, .cat-tab:hover {
-            background: rgba(0,229,255,0.1);
-            border-color: var(--ar-cyan); color: var(--ar-cyan);
-        }
-
-        /* Model grid */
-        .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        /* --- LƯỚI VẬT THỂ & NÚT XÓA --- */
+        .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .model-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 10px; overflow: hidden;
-            cursor: pointer; transition: all 0.2s; position: relative;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center; position: relative;
         }
-        .model-card:hover { border-color: rgba(0,229,255,0.5); transform: translateY(-2px); }
-        .model-card.selected {
-            border-color: var(--ar-cyan);
-            background: rgba(0,229,255,0.08);
-            box-shadow: 0 0 16px rgba(0,229,255,0.2);
+        .model-card:hover { border-color: #00e5ff; }
+        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #fff; }
+        .model-name { padding: 8px 5px; color: white; font-size: 11px; font-weight: 600; }
+        
+        .delete-btn {
+            position: absolute; top: 5px; right: 5px; background: rgba(200, 16, 46, 0.9);
+            color: white; border: none; border-radius: 5px; padding: 4px; font-size: 12px; cursor: pointer;
         }
-        .model-card img { width: 100%; height: 72px; object-fit: cover; background: #fff; display: block; }
-        .model-card-name { padding: 6px 7px; font-size: 10px; color: #94a3b8; font-family: 'Space Grotesk', sans-serif; }
-        .model-check {
-            position: absolute; top: 5px; right: 5px;
-            background: var(--ar-cyan); color: #070f1e;
-            border-radius: 50%; width: 17px; height: 17px;
-            font-size: 9px; font-weight: 700;
-            display: none; align-items: center; justify-content: center;
-        }
-        .model-card.selected .model-check { display: flex; }
+        .delete-btn:hover { background: red; transform: scale(1.1); }
 
-        /* Panel footer */
-        .pp-footer { padding: 10px; border-top: 1px solid rgba(255,255,255,0.07); }
-        #btn-confirm-place {
-            width: 100%; padding: 11px;
-            background: var(--ar-cyan); color: #070f1e;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 12px; font-weight: 700; letter-spacing: 2px;
-            border: none; border-radius: 10px; cursor: pointer;
-            transition: all 0.2s;
+        /* Nút thêm mới */
+        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        
+        /* --- MODAL THÊM VẬT THỂ --- */
+        #admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
         }
-        #btn-confirm-place:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,229,255,0.3); }
-        #btn-confirm-place:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-        /* ── SCENE LIST PANEL ── */
-        #scene-panel {
-            position: absolute;
-            right: 0; top: 0; bottom: 0;
-            width: 230px;
-            background: rgba(7,15,30,0.94);
-            border-left: 1px solid rgba(0,229,255,0.15);
-            backdrop-filter: blur(16px);
-            z-index: 20;
-            display: flex; flex-direction: column;
-            transform: translateX(100%);
-            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        .modal-content {
+            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
+            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
         }
-        #scene-panel.open { transform: translateX(0); }
-        .sp-item {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            cursor: pointer; transition: background 0.2s;
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
+        .form-group input[type="text"], .form-group select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
         }
-        .sp-item:hover { background: rgba(0,229,255,0.05); }
-        .sp-item.active { background: rgba(0,229,255,0.1); }
-        .sp-name { flex: 1; font-size: 11px; color: #94a3b8; font-family: 'Space Grotesk', sans-serif; }
-        .sp-del {
-            background: none; border: none; color: #334155;
-            font-size: 13px; cursor: pointer; transition: color 0.2s; padding: 2px 5px;
+        .form-group input[type="file"] {
+            width: 100%; padding: 8px; font-size: 13px; color: #94a3b8;
+            background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px;
         }
-        .sp-del:hover { color: var(--vku-red); }
-        #sp-empty {
-            padding: 28px 16px; text-align: center;
-            color: #334155; font-size: 12px;
-            font-family: 'Space Grotesk', sans-serif; line-height: 1.8;
-        }
-
-        /* ── TOAST ── */
-        #ar-toast {
-            position: absolute;
-            bottom: 105px; left: 50%;
-            transform: translateX(-50%);
-            z-index: 30;
-            background: rgba(18,35,67,0.9);
-            border: 1px solid rgba(0,229,255,0.2);
-            color: var(--ar-cyan);
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 11px; letter-spacing: 1px;
-            padding: 8px 18px; border-radius: 20px;
-            opacity: 0; transition: opacity 0.3s;
-            pointer-events: none; white-space: nowrap;
-        }
-        #ar-toast.show { opacity: 1; }
-
-        /* ── LOADING UPLOAD ── */
-        #upload-loading {
-            display: none;
-            position: fixed; inset: 0; z-index: 9999;
-            background: rgba(7,15,30,0.88);
-            backdrop-filter: blur(6px);
-            flex-direction: column;
-            align-items: center; justify-content: center; gap: 16px;
-        }
-        #upload-loading.show { display: flex; }
-        #upload-loading .loader-core { border-top-color: var(--ar-cyan); }
-        #upload-msg {
-            font-family: 'Space Grotesk', sans-serif;
-            color: var(--ar-cyan); font-size: 13px; letter-spacing: 2px;
-        }
-
-        /* responsive */
-        @media (max-width: 600px) {
-            #picker-panel { width: 260px; }
-            #scene-panel { width: 200px; }
-        }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
     </style>
 </head>
 <body>
-    <div id="splash-screen">
-        <div class="loader-core"></div>
-        <div class="loader-text">INITIALIZING AR SYSTEM...</div>
-    </div>
-
+    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
     <vku-header></vku-header>
 
     <main>
-        <h1 class="gradient-text" style="text-align:center; font-size:2.6rem; margin-bottom:12px;">
-            AR Room Builder
-        </h1>
+        <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">Truy Cập AR Camera</h1>
+        <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
+            <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
+                <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
+                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
+            </p>
+        </div>
 
-        <div class="ar-launch-wrap">
-            <div class="protocol-box">
-                <strong>⚠️ PROTOCOL:</strong>
-                Nhấn <strong>Khởi Động AR</strong> → Di chuyển điện thoại để quét sàn →
-                Chọn đồ vật → Tap màn hình để đặt · Chọn vật thể đã đặt để di chuyển / xoay / scale
+        <div class="ar-container">
+            <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
+
+            <div id="side-menu" class="side-menu">
+                <div class="menu-header">
+                    <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
+                    <h3 id="menu-title">Danh Mục</h3>
+                    <button class="icon-btn" onclick="toggleMenu()">✖</button>
+                </div>
+                <div id="menu-content" class="menu-content"><p style="color: #00e5ff;">Đang tải...</p></div>
+                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
+                </div>
             </div>
-
-            <button id="btn-start-ar" onclick="startAR()">
-                <svg viewBox="0 0 24 24"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                KHỞI ĐỘNG AR ROOM BUILDER
-            </button>
-
-            <div id="compat-warn">
-                ❌ <strong>Thiết bị / Trình duyệt không hỗ trợ WebXR Hit Test.</strong><br>
-                Yêu cầu: <strong>Android · Chrome 81+</strong> và truy cập qua <strong>HTTPS</strong>.<br>
-                iOS Safari hiện chưa hỗ trợ WebXR Hit Test API.
-            </div>
+            
+            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
+                <button slot="ar-button" class="ar-button">
+                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                    Khởi động Hologram
+                </button>
+            </model-viewer>
         </div>
     </main>
 
-    <vku-footer></vku-footer>
-
-    <!-- ══════════════════════════════════
-         AR OVERLAY
-    ══════════════════════════════════ -->
-    <div id="ar-overlay">
-        <canvas id="ar-canvas"></canvas>
-
-        <!-- Top bar -->
-        <div id="ar-topbar">
-            <div class="ar-brand">VKU · AR</div>
-            <div id="ar-status-badge">QUÉT MẶT SÀN...</div>
-            <button id="btn-exit-ar" onclick="exitAR()">✕ THOÁT</button>
-        </div>
-
-        <!-- Scan hint -->
-        <div id="scan-hint">
-            <div class="scan-ring"></div>
-            <p>DI CHUYỂN ĐIỆN THOẠI ĐỂ QUÉT SÀN</p>
-        </div>
-
-        <!-- Place hint -->
-        <div id="place-hint">TAP MÀN HÌNH ĐỂ ĐẶT VẬT THỂ</div>
-
-        <!-- Transform bar -->
-        <div id="transform-bar">
-            <span class="tb-label">ĐỐI TƯỢNG:</span>
-            <button class="tb-btn" onclick="rotateSelected(-45)">↺ -45°</button>
-            <button class="tb-btn" onclick="rotateSelected(45)">↻ +45°</button>
-            <div class="tb-sep"></div>
-            <button class="tb-btn" onclick="scaleSelected(1.25)">＋ To</button>
-            <button class="tb-btn" onclick="scaleSelected(0.8)">－ Nhỏ</button>
-            <div class="tb-sep"></div>
-            <button class="tb-btn del" onclick="deleteSelected()">🗑 Xóa</button>
-            <div class="tb-sep"></div>
-            <button class="tb-btn" onclick="deselectObject()" style="color:#475569">✖</button>
-        </div>
-
-        <!-- Bottom toolbar -->
-        <div id="ar-toolbar">
-            <button class="ar-tool-btn" id="btn-pick" onclick="openPicker()">
-                <span class="ico">➕</span>
-                <span>Thêm Đồ</span>
-            </button>
-            <button class="ar-tool-btn" onclick="openScenePanel()">
-                <span class="ico">📋</span>
-                <span>Danh sách</span>
-                <span id="obj-count">0</span>
-            </button>
-            <button class="ar-tool-btn danger" onclick="clearAll()">
-                <span class="ico">🗑️</span>
-                <span>Xóa Hết</span>
-            </button>
-        </div>
-
-        <!-- Object Picker Panel -->
-        <div id="picker-panel">
-            <div class="pp-header">
-                <div class="pp-title">CHỌN ĐỒ VẬT</div>
-                <button class="pp-close" onclick="closePicker()">✖</button>
-            </div>
-            <div class="pp-body">
-                <div class="cat-tabs" id="cat-tabs"></div>
-                <div class="model-grid" id="model-grid">
-                    <div style="color:#334155;font-size:12px;grid-column:span 2;text-align:center;padding:20px 0;">
-                        Đang tải...
-                    </div>
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
+            <form id="add-form" onsubmit="submitNewModel(event)">
+                <div class="form-group">
+                    <label>Tên hiển thị:</label>
+                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
                 </div>
-            </div>
-            <div class="pp-footer">
-                <button id="btn-confirm-place" onclick="enterPlacingMode()" disabled>
-                    CHỌN VẬT THỂ TRƯỚC
-                </button>
-            </div>
-        </div>
-
-        <!-- Scene list panel -->
-        <div id="scene-panel">
-            <div class="pp-header">
-                <div class="pp-title">TRONG PHÒNG</div>
-                <button class="pp-close" onclick="closeScenePanel()">✖</button>
-            </div>
-            <div class="pp-body" id="scene-list">
-                <div id="sp-empty">
-                    Chưa có đồ vật.<br><br>
-                    Nhấn <strong style="color:var(--ar-cyan)">Thêm Đồ</strong> để bắt đầu.
+                <div class="form-group">
+                    <label>Danh mục (Lấy từ Firebase):</label>
+                    <select id="inp-category" required></select>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
+                    <input type="file" id="inp-image-file" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Chọn File 3D (.glb):</label>
+                    <input type="file" id="inp-model-file" accept=".glb" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
+                </div>
+            </form>
         </div>
-
-        <!-- Toast -->
-        <div id="ar-toast"></div>
     </div>
-
-    <!-- Upload loading -->
-    <div id="upload-loading">
-        <div class="loader-core"></div>
-        <div id="upload-msg">ĐANG TẢI...</div>
-    </div>
-
-    <!-- THREE.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script type="module">
-    import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, getDocs }
-                                from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // ── CONFIG ──────────────────────────────────
-    const firebaseConfig = {
-        apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-        authDomain: "vku-ar-project.firebaseapp.com",
-        projectId: "vku-ar-project",
-        storageBucket: "vku-ar-project.firebasestorage.app",
-        messagingSenderId: "595437202444",
-        appId: "1:595437202444:web:7939802383d326eee75229"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+        // ==========================================
+        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
+        // ==========================================
+        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
 
-    // ── STATE ────────────────────────────────────
-    let categories    = {};
-    let modelDatabase = {};
-    let activeCat     = null;
-    let selectedModel = null;   // model được chọn để đặt
-    let placingMode   = false;
-    let sceneObjects  = [];     // [ { id, name, mesh, anchor } ]
-    let selectedObjId = null;
-    let objCounter    = 0;
+        // ==========================================
+        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
+        // ==========================================
+        const firebaseConfig = {
+  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+  authDomain: "vku-ar-project.firebaseapp.com",
+  projectId: "vku-ar-project",
+  storageBucket: "vku-ar-project.firebasestorage.app",
+  messagingSenderId: "595437202444",
+  appId: "1:595437202444:web:7939802383d326eee75229",
+  measurementId: "G-QS4HC8MPGT"
+};
 
-    // THREE / WebXR
-    let renderer, scene, camera;
-    let xrSession   = null;
-    let xrRefSpace  = null;
-    let hitTestSrc  = null;
-    let reticle     = null;     // vòng tròn chỉ điểm đặt
-    let hitPose     = null;     // pose của reticle frame hiện tại
-    let gltfLoader  = null;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-    // ── FIREBASE LOAD ────────────────────────────
-    async function fetchData() {
-        try {
-            const catSnap = await getDocs(collection(db, "categories"));
-            categories = {};
-            catSnap.forEach(d => { categories[d.id] = d.data().name; });
+        let categoryDisplayNames = {}; 
+        let modelDatabase = {};        
 
-            const modSnap = await getDocs(collection(db, "models"));
-            modelDatabase = {};
-            modSnap.forEach(d => {
-                const data = d.data();
-                const cat  = data.category || "khac";
-                if (!modelDatabase[cat]) modelDatabase[cat] = [];
-                modelDatabase[cat].push({
-                    id:    d.id,
-                    name:  data.name  || "Chưa tên",
-                    url:   data.url,
-                    image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
-                });
-            });
-            renderCategoryTabs();
-        } catch(err) {
-            console.error("Firebase error:", err);
-            showToast("❌ Lỗi kết nối Firebase");
-        }
-    }
+        const menuContent = document.getElementById('menu-content');
+        const menuTitle = document.getElementById('menu-title');
+        const backBtn = document.getElementById('back-btn');
+        const arViewer = document.getElementById('ar-viewer');
+        const sideMenu = document.getElementById('side-menu');
 
-    // ── RENDER TABS & GRID ───────────────────────
-    function renderCategoryTabs() {
-        const tabsEl = document.getElementById('cat-tabs');
-        tabsEl.innerHTML = '';
-        Object.entries(categories).forEach(([code, name], i) => {
-            const btn = document.createElement('button');
-            btn.className = 'cat-tab' + (i === 0 ? ' active' : '');
-            btn.textContent = name;
-            btn.onclick = () => {
-                document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-                btn.classList.add('active');
-                activeCat = code;
-                renderModelGrid(code);
-            };
-            tabsEl.appendChild(btn);
-            if (i === 0) { activeCat = code; }
-        });
-        if (activeCat) renderModelGrid(activeCat);
-    }
-
-    function renderModelGrid(catCode) {
-        const grid  = document.getElementById('model-grid');
-        const items = modelDatabase[catCode] || [];
-        grid.innerHTML = '';
-        if (items.length === 0) {
-            grid.innerHTML = '<div style="color:#334155;font-size:12px;grid-column:span 2;text-align:center;padding:20px 0;">Chưa có vật thể nào.</div>';
-            return;
-        }
-        items.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'model-card' + (selectedModel?.id === item.id ? ' selected' : '');
-            card.innerHTML = `
-                <img src="${item.image}" loading="lazy">
-                <div class="model-card-name">${item.name}</div>
-                <div class="model-check">✓</div>
-            `;
-            card.onclick = () => {
-                selectedModel = item;
-                document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                const btn = document.getElementById('btn-confirm-place');
-                btn.disabled = false;
-                btn.textContent = `ĐẶT: ${item.name.slice(0,18).toUpperCase()}`;
-            };
-            grid.appendChild(card);
-        });
-    }
-
-    // ── WEBXR INIT ───────────────────────────────
-    window.startAR = async function() {
-        // Kiểm tra hỗ trợ
-        if (!navigator.xr) { showCompat(); return; }
-        const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
-        if (!supported) { showCompat(); return; }
-
-        // Khởi tạo THREE.js
-        initThree();
-
-        // Mở XR session
-        try {
-            xrSession = await navigator.xr.requestSession('immersive-ar', {
-                requiredFeatures: ['hit-test', 'local'],
-                optionalFeatures: ['dom-overlay', 'anchors'],
-                domOverlay: { root: document.getElementById('ar-overlay') }
-            });
-        } catch(e) {
-            showCompat(); return;
-        }
-
-        // Hiện overlay
-        document.getElementById('ar-overlay').classList.add('active');
-        document.querySelector('header').style.display = 'none';
-        document.querySelector('main').style.display   = 'none';
-        document.querySelector('footer').style.display = 'none';
-
-        // WebXR setup
-        renderer.xr.enabled = true;
-        await renderer.xr.setSession(xrSession);
-
-        xrRefSpace = await xrSession.requestReferenceSpace('local');
-
-        // Hit-test source từ viewer (tâm màn hình)
-        const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-        hitTestSrc = await xrSession.requestHitTestSource({ space: viewerSpace });
-
-        xrSession.addEventListener('end', onXRSessionEnd);
-        renderer.setAnimationLoop(onXRFrame);
-
-        updateStatus("QUÉT MẶT SÀN...");
-        showToast("Di chuyển điện thoại để quét sàn");
-    };
-
-    function initThree() {
-        const canvas = document.getElementById('ar-canvas');
-
-        renderer = new THREE.WebGLRenderer({
-            canvas,
-            alpha: true,
-            antialias: true,
-            premultipliedAlpha: false
-        });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr  = renderer.xr || {};
-        renderer.shadowMap.enabled = true;
-
-        scene  = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
-
-        // Ánh sáng
-        const ambient = new THREE.AmbientLight(0xffffff, 1.2);
-        scene.add(ambient);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(1, 3, 2);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-
-        // Reticle — vòng tròn chỉ điểm đặt
-        const geo = new THREE.RingGeometry(0.1, 0.13, 32);
-        geo.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-        const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
-        reticle = new THREE.Mesh(geo, mat);
-        reticle.visible = false;
-        reticle.matrixAutoUpdate = false;
-        scene.add(reticle);
-
-        // Nạp GLTFLoader từ CDN
-        loadGLTFLoader();
-
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-        });
-    }
-
-    // Load GLTFLoader động từ CDN (r128 compatible)
-    function loadGLTFLoader() {
-        return new Promise(resolve => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.js';
-            script.onload = () => { gltfLoader = new THREE.GLTFLoader(); resolve(); };
-            // Fallback: tự tạo loader đơn giản nếu CDN không có
-            script.onerror = () => {
-                gltfLoader = null;
-                resolve();
-            };
-            document.head.appendChild(script);
-        });
-    }
-
-    // ── RENDER LOOP ──────────────────────────────
-    function onXRFrame(time, frame) {
-        if (!frame) return;
-
-        const session = renderer.xr.getSession();
-        const pose    = frame.getViewerPose(xrRefSpace);
-
-        // Hit-test
-        if (hitTestSrc) {
-            const results = frame.getHitTestResults(hitTestSrc);
-            if (results.length > 0) {
-                hitPose = results[0].getPose(xrRefSpace);
-                reticle.visible = true;
-                reticle.matrix.fromArray(hitPose.transform.matrix);
-
-                // Lần đầu có hit → cập nhật UI
-                if (document.getElementById('scan-hint').classList.contains('hidden') === false) {
-                    document.getElementById('scan-hint').classList.add('hidden');
-                    updateStatus("SÀN ĐÃ QUÉT ✓");
-                    if (placingMode) showPlaceHint(true);
-                }
-            } else {
-                hitPose = null;
-                reticle.visible = false;
+        window.toggleMenu = function() {
+            sideMenu.classList.toggle('open');
+            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
+                renderCategories();
             }
         }
 
-        renderer.render(scene, camera);
-    }
+        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
+        window.fetchFromFirebase = async function() {
+            try {
+                // Tải danh mục
+                const catSnapshot = await getDocs(collection(db, "categories"));
+                categoryDisplayNames = {};
+                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
 
-    // ── TAP ĐẶT VẬT THỂ ─────────────────────────
-    // Bắt sự kiện tap trên overlay (không phải UI)
-    document.getElementById('ar-canvas').addEventListener('click', onCanvasTap);
-    document.getElementById('ar-canvas').addEventListener('touchend', e => {
-        e.preventDefault();
-        onCanvasTap(e.changedTouches[0]);
-    }, { passive: false });
+                // Tải vật thể
+                const modelSnapshot = await getDocs(collection(db, "models"));
+                modelDatabase = {}; 
+                let firstModelUrl = "";
 
-    function onCanvasTap(e) {
-        if (!placingMode || !selectedModel || !hitPose) return;
-        placeObject(hitPose.transform.matrix);
-    }
+                modelSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const catCode = data.category || "khac"; 
+                    if (!modelDatabase[catCode]) modelDatabase[catCode] = [];
 
-    // ── ĐẶT VẬT THỂ ─────────────────────────────
-    function placeObject(matrix) {
-        const pos = new THREE.Vector3();
-        const rot = new THREE.Quaternion();
-        const scl = new THREE.Vector3();
-        new THREE.Matrix4().fromArray(matrix).decompose(pos, rot, scl);
+                    modelDatabase[catCode].push({
+                        id: doc.id, 
+                        name: data.name || "Chưa tên",
+                        url: data.url,
+                        image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
+                    });
+                    if(!firstModelUrl) firstModelUrl = data.url;
+                });
 
-        const objId = `obj_${++objCounter}`;
+                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
+                renderCategories();
 
-        if (gltfLoader) {
-            // Box placeholder ngay lập tức, rồi swap khi load xong
-            const placeholder = createPlaceholder(pos, rot);
-            placeholder.name  = objId;
-            placeholder.userData = { id: objId, isPlaceholder: true };
-            scene.add(placeholder);
-
-            const entry = { id: objId, name: selectedModel.name, mesh: placeholder };
-            sceneObjects.push(entry);
-            updateBadge(); updateSceneList();
-            showToast(`⏳ Đang tải: ${selectedModel.name}`);
-
-            gltfLoader.load(
-                selectedModel.url,
-                (gltf) => {
-                    const model = gltf.scene;
-                    model.position.copy(pos);
-                    model.quaternion.copy(rot);
-                    model.scale.set(1, 1, 1);
-                    model.name = objId;
-                    model.userData = { id: objId };
-                    // Bật shadow
-                    model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
-
-                    // Tự động scale cho vừa (~0.5m)
-                    const box = new THREE.Box3().setFromObject(model);
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    if (maxDim > 0.5) model.scale.setScalar(0.5 / maxDim);
-
-                    scene.remove(placeholder);
-                    scene.add(model);
-                    const idx = sceneObjects.findIndex(o => o.id === objId);
-                    if (idx !== -1) sceneObjects[idx].mesh = model;
-                    showToast(`✅ Đã đặt: ${selectedModel.name}`);
-                },
-                undefined,
-                (err) => { console.error("GLTF load error:", err); showToast("❌ Lỗi tải model"); }
-            );
-        } else {
-            // Fallback: box đơn giản nếu không có GLTFLoader
-            const mesh = createPlaceholder(pos, rot);
-            mesh.name = objId;
-            mesh.userData = { id: objId };
-            scene.add(mesh);
-            sceneObjects.push({ id: objId, name: selectedModel.name, mesh });
-            updateBadge(); updateSceneList();
-            showToast(`✅ Đã đặt: ${selectedModel.name} (placeholder)`);
+            } catch (error) {
+                console.error("Lỗi:", error);
+                menuContent.innerHTML = '<p style="color: #ff2a4b;">Lỗi kết nối Firebase!</p>';
+            }
         }
 
-        // Thoát placing mode sau khi đặt — người dùng tap lại để đặt tiếp
-        exitPlacingMode();
-    }
+        // VẼ DANH MỤC LÊN SIDEBAR
+        window.renderCategories = function() {
+            menuTitle.innerText = "Danh Mục Đồ Vật";
+            backBtn.style.display = 'none'; 
+            menuContent.innerHTML = ''; 
 
-    function createPlaceholder(pos, rot) {
-        const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-        const mat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.7 });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos);
-        mesh.quaternion.copy(rot);
-        return mesh;
-    }
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const div = document.createElement('div');
+                div.className = 'category-item';
+                div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
+                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
+                menuContent.appendChild(div);
+            });
+        }
 
-    // ── SELECT OBJECT (tap vào vật thể đã đặt) ──
-    // Raycasting từ tap
-    document.getElementById('ar-canvas').addEventListener('click', onTrySelect);
+        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
+        window.renderItems = function(catCode, displayName) {
+            menuTitle.innerText = displayName; 
+            backBtn.style.display = 'block'; 
+            menuContent.innerHTML = ''; 
+            
+            const items = modelDatabase[catCode] || [];
+            if(items.length === 0) { menuContent.innerHTML = "<p style='color:gray;'>Chưa có vật thể.</p>"; return; }
 
-    function onTrySelect(e) {
-        if (placingMode) return; // đang placing → không select
-        if (sceneObjects.length === 0) return;
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'items-grid';
 
-        const rect    = renderer.domElement.getBoundingClientRect();
-        const ndcX    = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-        const ndcY   = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteModel('${item.id}', event)">🗑️</button>
+                    <img src="${item.image}" class="model-img" loading="lazy">
+                    <div class="model-name">${item.name}</div>
+                `;
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
+                card.onclick = () => {
+                    arViewer.src = item.url;
+                    window.toggleMenu(); 
+                };
 
-        const meshes = sceneObjects.map(o => o.mesh).filter(Boolean);
-        const hits   = raycaster.intersectObjects(meshes, true);
+                gridDiv.appendChild(card);
+            });
+            menuContent.appendChild(gridDiv);
+        }
 
-        if (hits.length > 0) {
-            // Tìm object cha trong sceneObjects
-            let hit = hits[0].object;
-            while (hit.parent && !hit.userData.id) hit = hit.parent;
-            if (hit.userData.id) {
-                selectObject(hit.userData.id);
+        // XÓA VẬT THỂ
+        window.deleteModel = async function(docId, event) {
+            event.stopPropagation(); 
+            const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
+            if (confirmDelete) {
+                try {
+                    await deleteDoc(doc(db, "models", docId)); 
+                    alert("Đã xóa thành công!");
+                    fetchFromFirebase(); 
+                } catch (error) {
+                    alert("Lỗi khi xóa: " + error.message);
+                }
+            }
+        }
+
+        // QUẢN LÝ MODAL (FORM)
+        window.openModal = function() {
+            const selectEl = document.getElementById('inp-category');
+            selectEl.innerHTML = ''; 
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const option = document.createElement('option');
+                option.value = catCode;
+                option.text = categoryDisplayNames[catCode];
+                selectEl.appendChild(option);
+            });
+            document.getElementById('admin-modal').style.display = 'flex';
+        }
+
+        window.closeModal = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
+            document.getElementById('btn-save').disabled = false;
+            document.getElementById('btn-save').style.background = "#00e5ff";
+        }
+
+        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
+        async function uploadFileToCloudinary(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+
+            const response = await fetch(CLOUDINARY_URL, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.secure_url) {
+                return data.secure_url;
+            } else {
+                throw new Error(data.error?.message || "Tải file thất bại");
+            }
+        }
+
+        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
+        window.submitNewModel = async function(event) {
+            event.preventDefault(); 
+            
+            const btnSave = document.getElementById('btn-save');
+            const imgFile = document.getElementById('inp-image-file').files[0];
+            const modelFile = document.getElementById('inp-model-file').files[0];
+
+            if(!imgFile || !modelFile) {
+                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
                 return;
             }
-        }
-        // Tap vào khoảng trống → bỏ chọn
-        deselectObject();
-    }
 
-    function selectObject(objId) {
-        deselectObject();
-        selectedObjId = objId;
-        const obj = sceneObjects.find(o => o.id === objId);
-        if (!obj) return;
-        // Highlight: thêm wireframe
-        obj.mesh.traverse(c => {
-            if (c.isMesh) {
-                c.userData._origMat = c.material;
-                c.material = c.material.clone();
-                c.material.emissive = new THREE.Color(0x00e5ff);
-                c.material.emissiveIntensity = 0.3;
+            // Khóa nút bấm và đổi hiệu ứng
+            btnSave.disabled = true;
+            btnSave.style.background = "#475569"; 
+
+            try {
+                // 1. Tải ảnh hiển thị
+                btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
+                const imageUrl = await uploadFileToCloudinary(imgFile);
+
+                // 2. Tải mô hình 3D (Đợi hơi lâu)
+                btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
+                const modelUrl = await uploadFileToCloudinary(modelFile);
+
+                // 3. Đẩy thông tin vào Firebase
+                btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
+                const newModel = {
+                    name: document.getElementById('inp-name').value,
+                    category: document.getElementById('inp-category').value,
+                    image: imageUrl,
+                    url: modelUrl
+                };
+
+                await addDoc(collection(db, "models"), newModel);
+                
+                alert("🎉 Đã thêm vật thể mới thành công!");
+                closeModal();
+                fetchFromFirebase(); 
+
+            } catch (error) {
+                console.error("Lỗi Upload:", error);
+                alert("🚨 Lỗi: " + error.message);
+                
+                // Mở khóa nút nếu bị lỗi
+                btnSave.innerText = "Thử lại";
+                btnSave.disabled = false;
+                btnSave.style.background = "#ff2a4b";
             }
-        });
-        document.getElementById('transform-bar').classList.add('show');
-        updateSceneList();
-    }
-
-    window.deselectObject = function() {
-        if (selectedObjId) {
-            const obj = sceneObjects.find(o => o.id === selectedObjId);
-            if (obj) {
-                obj.mesh.traverse(c => {
-                    if (c.isMesh && c.userData._origMat) {
-                        c.material = c.userData._origMat;
-                        delete c.userData._origMat;
-                    }
-                });
-            }
         }
-        selectedObjId = null;
-        document.getElementById('transform-bar').classList.remove('show');
-        updateSceneList();
-    };
 
-    // ── DRAG TO MOVE ─────────────────────────────
-    let isDragging   = false;
-    let dragStartPos = null;
-    let dragObj      = null;
-
-    document.getElementById('ar-canvas').addEventListener('touchstart', e => {
-        if (placingMode || !selectedObjId) return;
-        isDragging   = true;
-        dragObj      = sceneObjects.find(o => o.id === selectedObjId);
-        dragStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }, { passive: true });
-
-    document.getElementById('ar-canvas').addEventListener('touchmove', e => {
-        if (!isDragging || !dragObj || !hitPose) return;
-        // Di chuyển object tới vị trí hit-test hiện tại
-        const pos = new THREE.Vector3();
-        new THREE.Matrix4().fromArray(hitPose.transform.matrix).decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
-        dragObj.mesh.position.set(pos.x, pos.y, pos.z);
-    }, { passive: true });
-
-    document.getElementById('ar-canvas').addEventListener('touchend', () => {
-        isDragging = false; dragObj = null; dragStartPos = null;
-    });
-
-    // ── TRANSFORM CONTROLS ────────────────────────
-    window.rotateSelected = function(deg) {
-        if (!selectedObjId) return;
-        const obj = sceneObjects.find(o => o.id === selectedObjId);
-        if (!obj) return;
-        obj.mesh.rotation.y += (deg * Math.PI) / 180;
-    };
-
-    window.scaleSelected = function(factor) {
-        if (!selectedObjId) return;
-        const obj = sceneObjects.find(o => o.id === selectedObjId);
-        if (!obj) return;
-        const cur = obj.mesh.scale.x;
-        const ns  = Math.max(0.05, cur * factor);
-        obj.mesh.scale.setScalar(ns);
-    };
-
-    window.deleteSelected = function() {
-        if (!selectedObjId) return;
-        deleteObject(selectedObjId);
-    };
-
-    function deleteObject(objId) {
-        const idx = sceneObjects.findIndex(o => o.id === objId);
-        if (idx === -1) return;
-        scene.remove(sceneObjects[idx].mesh);
-        sceneObjects.splice(idx, 1);
-        if (selectedObjId === objId) {
-            selectedObjId = null;
-            document.getElementById('transform-bar').classList.remove('show');
-        }
-        updateBadge(); updateSceneList();
-        showToast("🗑️ Đã xóa");
-    }
-    window.deleteSceneObj = deleteObject;
-
-    window.clearAll = function() {
-        if (sceneObjects.length === 0) { showToast("Phòng đã trống!"); return; }
-        if (!confirm(`Xóa tất cả ${sceneObjects.length} vật thể?`)) return;
-        sceneObjects.forEach(o => scene.remove(o.mesh));
-        sceneObjects = [];
-        selectedObjId = null;
-        document.getElementById('transform-bar').classList.remove('show');
-        updateBadge(); updateSceneList();
-        showToast("🗑️ Đã xóa tất cả");
-    };
-
-    // ── PLACING MODE ─────────────────────────────
-    window.enterPlacingMode = function() {
-        if (!selectedModel) return;
-        placingMode = true;
-        closePicker();
-        showPlaceHint(true);
-        document.getElementById('place-hint').textContent = `TAP ĐỂ ĐẶT: ${selectedModel.name.toUpperCase()}`;
-        showToast("Tap vào sàn để đặt vật thể");
-    };
-
-    function exitPlacingMode() {
-        placingMode = false;
-        showPlaceHint(false);
-    }
-
-    function showPlaceHint(show) {
-        const el = document.getElementById('place-hint');
-        show ? el.classList.add('show') : el.classList.remove('show');
-    }
-
-    // ── EXIT AR ──────────────────────────────────
-    window.exitAR = async function() {
-        if (xrSession) {
-            await xrSession.end().catch(() => {});
-        }
-    };
-
-    function onXRSessionEnd() {
-        xrSession = null; hitTestSrc = null;
-        renderer.setAnimationLoop(null);
-        document.getElementById('ar-overlay').classList.remove('active');
-        document.querySelector('header').style.display = '';
-        document.querySelector('main').style.display   = '';
-        document.querySelector('footer').style.display = '';
-        // Reset state
-        sceneObjects.forEach(o => scene && scene.remove(o.mesh));
-        sceneObjects  = [];
-        selectedObjId = null;
-        placingMode   = false;
-        updateBadge(); updateSceneList();
-        document.getElementById('transform-bar').classList.remove('show');
-        showPlaceHint(false);
-        document.getElementById('scan-hint').classList.remove('hidden');
-    }
-
-    // ── PANEL HELPERS ─────────────────────────────
-    window.openPicker     = function() { document.getElementById('picker-panel').classList.add('open'); closeScenePanel(); exitPlacingMode(); };
-    window.closePicker    = function() { document.getElementById('picker-panel').classList.remove('open'); };
-    window.openScenePanel = function() { document.getElementById('scene-panel').classList.add('open'); closePicker(); };
-    window.closeScenePanel = function() { document.getElementById('scene-panel').classList.remove('open'); };
-
-    function updateBadge() {
-        document.getElementById('obj-count').textContent = sceneObjects.length;
-    }
-
-    function updateSceneList() {
-        const listEl = document.getElementById('scene-list');
-        if (sceneObjects.length === 0) {
-            listEl.innerHTML = '<div id="sp-empty">Chưa có đồ vật.<br><br>Nhấn <strong style="color:var(--ar-cyan)">Thêm Đồ</strong> để bắt đầu.</div>';
-            return;
-        }
-        listEl.innerHTML = '';
-        sceneObjects.forEach((obj, i) => {
-            const item = document.createElement('div');
-            item.className = 'sp-item' + (obj.id === selectedObjId ? ' active' : '');
-            item.innerHTML = `
-                <span style="font-size:16px">📦</span>
-                <span class="sp-name">${i+1}. ${obj.name}</span>
-                <button class="sp-del" onclick="deleteSceneObj('${obj.id}')">✕</button>
-            `;
-            item.onclick = e => { if (!e.target.closest('.sp-del')) selectObject(obj.id); };
-            listEl.appendChild(item);
-        });
-    }
-
-    function updateStatus(txt) {
-        document.getElementById('ar-status-badge').textContent = txt;
-    }
-
-    function showCompat() {
-        document.getElementById('compat-warn').classList.add('show');
-        document.getElementById('btn-start-ar').disabled = true;
-    }
-
-    window.showToast = function(msg) {
-        const t = document.getElementById('ar-toast');
-        t.textContent = msg;
-        t.classList.add('show');
-        clearTimeout(window._toast);
-        window._toast = setTimeout(() => t.classList.remove('show'), 2800);
-    };
-
-    // ── INIT ─────────────────────────────────────
-    fetchData();
-    // Kiểm tra WebXR sớm để disable nút nếu không hỗ trợ
-    if (!navigator.xr) {
-        navigator.xr?.isSessionSupported?.('immersive-ar').catch(() => {});
-    }
+        // BẮT ĐẦU CHẠY APP
+        fetchFromFirebase();
     </script>
 </body>
 </html>
