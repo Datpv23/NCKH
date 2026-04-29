@@ -3,385 +3,989 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VKU AR - Full CMS & Cloudinary Edition</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="js/components.js" defer></script>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <title>VKU AR - Room Builder (Babylon.js)</title>
+
+    <!-- Babylon.js core + loaders -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
     <style>
-        /* --- TÙY CHỈNH KHU VỰC AR --- */
-        .ar-container { position: relative; max-width: 900px; margin: 0 auto; overflow: hidden; border-radius: 16px; }
-        .menu-toggle-btn {
-            position: absolute; top: 15px; left: 15px; z-index: 10;
-            background: rgba(18, 35, 67, 0.85); color: white; border: 1px solid var(--ar-cyan, #00e5ff);
-            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px);
-        }
-        .menu-toggle-btn:hover { background: rgba(0, 229, 255, 0.2); }
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* --- SIDEBAR MENU --- */
-        .side-menu {
-            position: absolute; top: 0; left: -100%; width: 300px; height: 100%;
-            background: rgba(11, 20, 38, 0.95); z-index: 20; transition: left 0.4s ease; 
-            display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        :root {
+            --vku-dark:   #0b1426;
+            --vku-navy:   #122343;
+            --vku-cyan:   #00e5ff;
+            --vku-gold:   #ffc107;
+            --vku-red:    #c8102e;
+            --vku-glass:  rgba(18, 35, 67, 0.88);
         }
-        .side-menu.open { left: 0; }
-        .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
-        .menu-header h3 { margin: 0; font-size: 16px; }
-        .icon-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
-        .icon-btn:hover { color: #00e5ff; }
-        #back-btn { display: none; font-size: 14px; color: #94a3b8; }
-        .menu-content { flex: 1; overflow-y: auto; padding: 15px; }
 
-        /* Nút chung */
-        .category-item {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            padding: 15px; margin-bottom: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;
+        html, body {
+            width: 100%; height: 100%;
+            background: var(--vku-dark);
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* ===== CANVAS BABYLON ===== */
+        #renderCanvas {
+            width: 100%; height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        /* ===== HUD OVERLAY (tất cả UI đặt trên canvas) ===== */
+        #hud {
+            position: fixed; inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* ===== NÚT MỞ MENU ===== */
+        #menu-toggle-btn {
+            position: absolute; top: 18px; left: 18px;
+            pointer-events: all;
+            background: var(--vku-glass);
+            color: white; border: 1px solid var(--vku-cyan);
+            padding: 10px 16px; border-radius: 10px;
+            font-weight: 600; font-size: 14px;
+            cursor: pointer; backdrop-filter: blur(8px);
+            transition: background 0.25s;
+        }
+        #menu-toggle-btn:hover { background: rgba(0,229,255,0.18); }
+
+        /* ===== THANH TRẠNG THÁI ===== */
+        #status-bar {
+            position: absolute; bottom: 110px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--vku-glass);
+            border: 1px solid rgba(0,229,255,0.35);
+            padding: 8px 20px; border-radius: 24px;
+            font-size: 13px; color: var(--vku-cyan);
+            backdrop-filter: blur(8px);
+            white-space: nowrap; max-width: 90vw;
+            text-align: center;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        /* ===== THANH ĐIỀU KHIỂN DƯỚI ===== */
+        #bottom-bar {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; gap: 12px;
+            pointer-events: all;
+        }
+
+        .ctrl-btn {
+            background: var(--vku-glass);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 11px 20px;
+            border-radius: 50px; font-size: 13px;
+            font-weight: 600; cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .ctrl-btn:hover  { border-color: var(--vku-cyan); background: rgba(0,229,255,0.12); }
+        .ctrl-btn:active { transform: scale(0.96); }
+        .ctrl-btn.danger { border-color: rgba(200,16,46,0.6); }
+        .ctrl-btn.danger:hover { background: rgba(200,16,46,0.2); }
+        .ctrl-btn.primary {
+            background: var(--vku-cyan); color: #0b1426;
+            border-color: var(--vku-cyan);
+        }
+        .ctrl-btn.primary:hover { background: #00cfea; }
+        .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ===== NÚT BẮT ĐẦU AR ===== */
+        #enter-ar-btn {
+            position: absolute; bottom: 20px; right: 18px;
+            pointer-events: all;
+            background: var(--vku-cyan); color: #0b1426;
+            border: none; padding: 13px 22px;
+            border-radius: 50px; font-size: 14px;
+            font-weight: 700; cursor: pointer;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        #enter-ar-btn:hover  { background: #00cfea; transform: scale(1.04); }
+        #enter-ar-btn:active { transform: scale(0.97); }
+        #enter-ar-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        #enter-ar-btn.hidden { display: none; }
+
+        /* ===== SỐ VẬT THỂ ===== */
+        #object-count {
+            position: absolute; top: 18px; right: 18px;
+            background: var(--vku-glass);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px 14px; border-radius: 10px;
+            font-size: 13px; color: #94a3b8;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+        }
+        #object-count span { color: var(--vku-cyan); font-weight: 700; }
+
+        /* ===== SIDEBAR MENU ===== */
+        #side-menu {
+            position: absolute; top: 0; left: -320px;
+            width: 300px; height: 100%;
+            background: rgba(11, 20, 38, 0.96);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(14px);
+            display: flex; flex-direction: column;
+            transition: left 0.38s cubic-bezier(.4,0,.2,1);
+            pointer-events: all;
+            z-index: 20;
+        }
+        #side-menu.open { left: 0; }
+
+        .menu-header {
             display: flex; justify-content: space-between;
+            align-items: center; padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }
-        .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: #00e5ff; }
+        .menu-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+        .icon-btn {
+            background: none; border: none;
+            color: #94a3b8; font-size: 18px;
+            cursor: pointer; padding: 4px 8px; border-radius: 6px;
+            transition: color 0.2s;
+        }
+        .icon-btn:hover { color: var(--vku-cyan); }
+        #back-btn { display: none; font-size: 14px; }
 
-        /* --- LƯỚI VẬT THỂ & NÚT XÓA --- */
+        .menu-content { flex: 1; overflow-y: auto; padding: 14px; }
+        .menu-content::-webkit-scrollbar { width: 4px; }
+        .menu-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+        /* Danh mục */
+        .category-item {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 14px 16px; margin-bottom: 8px;
+            border-radius: 10px; color: white;
+            cursor: pointer; font-weight: 600; font-size: 14px;
+            display: flex; justify-content: space-between;
+            align-items: center; transition: all 0.2s;
+        }
+        .category-item:hover {
+            background: rgba(0,229,255,0.08);
+            border-color: var(--vku-cyan);
+        }
+
+        /* Lưới vật thể */
         .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .model-card {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center; position: relative;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; overflow: hidden;
+            cursor: pointer; text-align: center;
+            position: relative; transition: all 0.2s;
         }
-        .model-card:hover { border-color: #00e5ff; }
-        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #fff; }
-        .model-name { padding: 8px 5px; color: white; font-size: 11px; font-weight: 600; }
-        
+        .model-card:hover { border-color: var(--vku-cyan); background: rgba(0,229,255,0.05); }
+        .model-card.selected { border-color: var(--vku-cyan); border-width: 2px; }
+        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #1e293b; }
+        .model-name { padding: 7px 5px; font-size: 11px; font-weight: 600; color: #e2e8f0; }
+        .model-badge {
+            position: absolute; top: 5px; left: 5px;
+            background: var(--vku-cyan); color: #0b1426;
+            font-size: 9px; font-weight: 700;
+            padding: 2px 6px; border-radius: 4px;
+            display: none;
+        }
+        .model-card.selected .model-badge { display: block; }
+
         .delete-btn {
-            position: absolute; top: 5px; right: 5px; background: rgba(200, 16, 46, 0.9);
-            color: white; border: none; border-radius: 5px; padding: 4px; font-size: 12px; cursor: pointer;
+            position: absolute; top: 5px; right: 5px;
+            background: rgba(200,16,46,0.9);
+            color: white; border: none; border-radius: 5px;
+            padding: 4px 6px; font-size: 11px; cursor: pointer;
+            transition: all 0.15s;
         }
-        .delete-btn:hover { background: red; transform: scale(1.1); }
+        .delete-btn:hover { background: #e01030; transform: scale(1.1); }
 
         /* Nút thêm mới */
-        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
-        
-        /* --- MODAL THÊM VẬT THỂ --- */
+        .add-btn {
+            background: var(--vku-cyan); color: #0b1426;
+            border: none; padding: 12px;
+            border-radius: 10px; font-weight: 700;
+            font-size: 14px; width: 100%;
+            cursor: pointer; margin-top: 12px;
+            transition: background 0.2s;
+        }
+        .add-btn:hover { background: #00cfea; }
+
+        .menu-footer {
+            padding: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* ===== PANEL VẬT THỂ ĐANG CHỌN ===== */
+        #selected-panel {
+            position: absolute; bottom: 80px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--vku-glass);
+            border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 14px; padding: 12px 18px;
+            display: none; gap: 10px; align-items: center;
+            pointer-events: all;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+        #selected-panel.visible { display: flex; }
+        #selected-name { font-size: 13px; font-weight: 600; color: var(--vku-cyan); }
+
+        .small-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white; padding: 7px 12px;
+            border-radius: 8px; font-size: 12px;
+            cursor: pointer; transition: all 0.18s;
+        }
+        .small-btn:hover { background: rgba(0,229,255,0.15); border-color: var(--vku-cyan); }
+        .small-btn.red:hover { background: rgba(200,16,46,0.2); border-color: var(--vku-red); }
+
+        /* ===== MODAL THÊM VẬT THỂ ===== */
         #admin-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 99999;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(6px);
         }
+        #admin-modal.open { display: flex; }
         .modal-content {
-            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
-            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+            background: var(--vku-navy); padding: 24px;
+            border-radius: 18px; width: 90%; max-width: 400px;
+            border: 1px solid var(--vku-cyan);
+            box-shadow: 0 0 40px rgba(0,229,255,0.12);
         }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
-        .form-group input[type="text"], .form-group select {
-            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
+        .modal-title {
+            color: var(--vku-cyan); text-align: center;
+            font-size: 17px; font-weight: 700; margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block; font-size: 12px;
+            margin-bottom: 5px; color: #94a3b8;
+        }
+        .form-group input[type="text"],
+        .form-group select {
+            width: 100%; padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(0,0,0,0.32); color: white;
+            font-size: 14px;
         }
         .form-group input[type="file"] {
-            width: 100%; padding: 8px; font-size: 13px; color: #94a3b8;
-            background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px;
+            width: 100%; padding: 8px; font-size: 13px;
+            color: #94a3b8;
+            background: rgba(0,0,0,0.2);
+            border: 1px dashed rgba(255,255,255,0.25);
+            border-radius: 8px;
         }
         .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
-        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
-        .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
+        .btn-cancel {
+            flex: 1; padding: 11px; background: #334155;
+            color: white; border: none; border-radius: 8px; cursor: pointer;
+        }
+        .btn-submit {
+            flex: 2; padding: 11px; background: var(--vku-cyan);
+            color: #0b1426; font-weight: 700; border: none;
+            border-radius: 8px; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-submit:hover { background: #00cfea; }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ===== TOAST ===== */
+        #toast {
+            position: fixed; bottom: 160px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #1e293b; border: 1px solid rgba(255,255,255,0.15);
+            color: white; padding: 10px 20px;
+            border-radius: 50px; font-size: 13px;
+            opacity: 0; transition: all 0.3s; z-index: 9999;
+            pointer-events: none;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.success { border-color: #22c55e; color: #86efac; }
+        #toast.error   { border-color: var(--vku-red); color: #fca5a5; }
+
+        /* ===== LOADING OVERLAY ===== */
+        #loading-overlay {
+            position: fixed; inset: 0; background: var(--vku-dark);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 99998; gap: 16px;
+            transition: opacity 0.5s;
+        }
+        #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .loader-ring {
+            width: 52px; height: 52px;
+            border: 3px solid rgba(0,229,255,0.15);
+            border-top-color: var(--vku-cyan);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text {
+            font-size: 13px; letter-spacing: 0.08em;
+            color: var(--vku-cyan); font-weight: 600;
+        }
+
+        /* ===== BADGE KHÔNG HỖ TRỢ WebXR ===== */
+        #no-xr-msg {
+            position: absolute; bottom: 20px; right: 18px;
+            background: rgba(200,16,46,0.15);
+            border: 1px solid rgba(200,16,46,0.4);
+            color: #fca5a5; padding: 10px 16px;
+            border-radius: 10px; font-size: 12px;
+            pointer-events: none; display: none;
+        }
     </style>
 </head>
 <body>
-    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
-    <vku-header></vku-header>
 
-    <main>
-        <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">Truy Cập AR Camera</h1>
-        <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
-            <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
-                <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
-                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
-            </p>
+<!-- Loading -->
+<div id="loading-overlay">
+    <div class="loader-ring"></div>
+    <div class="loader-text">ĐANG KHỞI TẠO BABYLON.JS...</div>
+</div>
+
+<!-- Canvas Babylon.js -->
+<canvas id="renderCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+
+    <!-- Nút mở menu -->
+    <button id="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
+
+    <!-- Đếm vật thể -->
+    <div id="object-count">Vật thể: <span id="obj-num">0</span></div>
+
+    <!-- Sidebar -->
+    <div id="side-menu">
+        <div class="menu-header">
+            <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
+            <h3 id="menu-title">Danh Mục</h3>
+            <button class="icon-btn" onclick="toggleMenu()">✖</button>
         </div>
-
-        <div class="ar-container">
-            <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
-
-            <div id="side-menu" class="side-menu">
-                <div class="menu-header">
-                    <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
-                    <h3 id="menu-title">Danh Mục</h3>
-                    <button class="icon-btn" onclick="toggleMenu()">✖</button>
-                </div>
-                <div id="menu-content" class="menu-content"><p style="color: #00e5ff;">Đang tải...</p></div>
-                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
-                </div>
-            </div>
-            
-            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
-                <button slot="ar-button" class="ar-button">
-                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                    Khởi động Hologram
-                </button>
-            </model-viewer>
+        <div id="menu-content" class="menu-content">
+            <p style="color:var(--vku-cyan); font-size:13px;">Đang tải...</p>
         </div>
-    </main>
-
-    <div id="admin-modal">
-        <div class="modal-content">
-            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
-            <form id="add-form" onsubmit="submitNewModel(event)">
-                <div class="form-group">
-                    <label>Tên hiển thị:</label>
-                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
-                </div>
-                <div class="form-group">
-                    <label>Danh mục (Lấy từ Firebase):</label>
-                    <select id="inp-category" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
-                    <input type="file" id="inp-image-file" accept="image/*" required>
-                </div>
-                <div class="form-group">
-                    <label>Chọn File 3D (.glb):</label>
-                    <input type="file" id="inp-model-file" accept=".glb" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
-                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
-                </div>
-            </form>
+        <div class="menu-footer">
+            <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    <!-- Thanh trạng thái -->
+    <div id="status-bar">Đang kết nối Firebase...</div>
 
-        // ==========================================
-        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
-        // ==========================================
-        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
-        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
+    <!-- Panel vật thể đang chọn -->
+    <div id="selected-panel">
+        <span id="selected-name">Tên vật thể</span>
+        <button class="small-btn" onclick="rotateSelected(-45)">↺ Xoay trái</button>
+        <button class="small-btn" onclick="rotateSelected(45)">Xoay phải ↻</button>
+        <button class="small-btn" onclick="scaleSelected(1.2)">＋ To</button>
+        <button class="small-btn" onclick="scaleSelected(0.8)">－ Nhỏ</button>
+        <button class="small-btn red" onclick="removeSelected()">🗑</button>
+        <button class="small-btn" onclick="deselectAll()">✖</button>
+    </div>
 
-        // ==========================================
-        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
-        // ==========================================
-        const firebaseConfig = {
-  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-  authDomain: "vku-ar-project.firebaseapp.com",
-  projectId: "vku-ar-project",
-  storageBucket: "vku-ar-project.firebasestorage.app",
-  messagingSenderId: "595437202444",
-  appId: "1:595437202444:web:7939802383d326eee75229",
-  measurementId: "G-QS4HC8MPGT"
+    <!-- Thanh dưới -->
+    <div id="bottom-bar">
+        <button class="ctrl-btn danger" onclick="clearAll()" id="btn-clear">🗑 Xóa tất cả</button>
+        <button class="ctrl-btn" onclick="saveLayout()" id="btn-save-layout">💾 Lưu phòng</button>
+        <button class="ctrl-btn" onclick="loadLayout()" id="btn-load-layout">📂 Tải phòng</button>
+    </div>
+
+    <!-- Nút vào AR -->
+    <button id="enter-ar-btn" onclick="enterAR()">
+        <svg viewBox="0 0 24 24"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+        Vào AR · Đặt đồ
+    </button>
+
+    <!-- Thông báo không hỗ trợ -->
+    <div id="no-xr-msg">⚠️ Thiết bị không hỗ trợ WebXR AR</div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modal thêm vật thể -->
+<div id="admin-modal">
+    <div class="modal-content">
+        <div class="modal-title">➕ Thêm Vật Thể Mới</div>
+        <div class="form-group">
+            <label>Tên hiển thị:</label>
+            <input type="text" id="inp-name" placeholder="VD: Bàn học gỗ">
+        </div>
+        <div class="form-group">
+            <label>Danh mục:</label>
+            <select id="inp-category"></select>
+        </div>
+        <div class="form-group">
+            <label>Ảnh hiển thị (.png, .jpg):</label>
+            <input type="file" id="inp-image-file" accept="image/*">
+        </div>
+        <div class="form-group">
+            <label>File 3D (.glb):</label>
+            <input type="file" id="inp-model-file" accept=".glb">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+            <button class="btn-submit" id="btn-submit-model" onclick="submitNewModel()">Tải Lên & Lưu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, getDocs,
+         addDoc, deleteDoc, doc, setDoc,
+         getDoc }              from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+/* ============================================================
+   1. CẤU HÌNH
+   ============================================================ */
+const CLOUDINARY_URL    = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+const CLOUDINARY_PRESET = "vku_ar_preset";
+
+const firebaseConfig = {
+    apiKey:            "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+    authDomain:        "vku-ar-project.firebaseapp.com",
+    projectId:         "vku-ar-project",
+    storageBucket:     "vku-ar-project.firebasestorage.app",
+    messagingSenderId: "595437202444",
+    appId:             "1:595437202444:web:7939802383d326eee75229",
 };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
-        let categoryDisplayNames = {}; 
-        let modelDatabase = {};        
+/* ============================================================
+   2. STATE
+   ============================================================ */
+let categoryDisplayNames = {};
+let modelDatabase        = {};
+let selectedModelUrl     = null;
+let selectedModelName    = "";
 
-        const menuContent = document.getElementById('menu-content');
-        const menuTitle = document.getElementById('menu-title');
-        const backBtn = document.getElementById('back-btn');
-        const arViewer = document.getElementById('ar-viewer');
-        const sideMenu = document.getElementById('side-menu');
+/* ============================================================
+   3. BABYLON.JS SCENE
+   ============================================================ */
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+const scene  = new BABYLON.Scene(engine);
 
-        window.toggleMenu = function() {
-            sideMenu.classList.toggle('open');
-            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
-                renderCategories();
-            }
+// Camera xem 3D (desktop preview)
+const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2, Math.PI/3, 6, BABYLON.Vector3.Zero(), scene);
+camera.attachControl(canvas, true);
+camera.lowerRadiusLimit = 1;
+camera.upperRadiusLimit = 20;
+
+// Ánh sáng
+const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+light.intensity = 1.2;
+const dirLight = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(-1, -2, -1), scene);
+dirLight.intensity = 0.6;
+
+// Sàn preview (ẩn khi vào AR)
+const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
+const groundMat = new BABYLON.GridMaterial ? new BABYLON.GridMaterial("gmat", scene) : new BABYLON.StandardMaterial("gmat", scene);
+groundMat.opacity = 0.25;
+ground.material = groundMat;
+ground.isPickable = true;
+
+// Render loop
+engine.runRenderLoop(() => scene.render());
+window.addEventListener("resize", () => engine.resize());
+
+/* ============================================================
+   4. QUẢN LÝ VẬT THỂ TRONG SCENE
+   ============================================================ */
+const placedObjects = [];   // [{ root, name, url }]
+let   selectedObj   = null;
+
+// Marker con trỏ hit-test (hình tròn phát sáng)
+const marker = BABYLON.MeshBuilder.CreateTorus("marker", { diameter: 0.3, thickness: 0.02 }, scene);
+marker.isVisible = false;
+const markerMat = new BABYLON.StandardMaterial("markerMat", scene);
+markerMat.emissiveColor = new BABYLON.Color3(0, 0.9, 1);
+markerMat.wireframe = false;
+marker.material = markerMat;
+
+// Thêm vật thể vào vị trí chỉ định
+window._addModelToScene = async function(url, name, position) {
+    setStatus("⏳ Đang tải " + name + "...");
+    try {
+        const result = await BABYLON.SceneLoader.ImportMeshAsync("", url, "", scene);
+        const root   = result.meshes[0];
+
+        // Normalize scale
+        const bounds = root.getHierarchyBoundingVectors();
+        const size   = bounds.max.subtract(bounds.min);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scaleFactor = maxDim > 0 ? 1.2 / maxDim : 1;
+        root.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
+
+        // Đặt vị trí
+        root.position = position ? position.clone() : new BABYLON.Vector3(0, 0, 0);
+
+        // Kéo thả (PointerDragBehavior - chỉ mặt phẳng XZ)
+        const drag = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
+        drag.useObjectOrientationForDragging = false;
+        root.addBehavior(drag);
+
+        // Click để chọn
+        root.getChildMeshes().forEach(m => {
+            m.isPickable = true;
+            m.actionManager = new BABYLON.ActionManager(scene);
+            m.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPickTrigger,
+                () => selectObject({ root, name, url })
+            ));
+        });
+
+        const obj = { root, name, url };
+        placedObjects.push(obj);
+        updateObjectCount();
+        setStatus("✅ Đã đặt: " + name + " — Chạm sàn để đặt thêm hoặc chọn đồ vật khác");
+        showToast("Đã đặt " + name, "success");
+        return obj;
+    } catch(e) {
+        setStatus("❌ Lỗi tải model: " + e.message);
+        showToast("Lỗi tải model", "error");
+        return null;
+    }
+};
+
+/* ============================================================
+   5. WEBXR AR SESSION
+   ============================================================ */
+let xrHelper    = null;
+let xrHitTest   = null;
+let currentHit  = null;
+let isInAR      = false;
+
+async function initWebXR() {
+    try {
+        // Kiểm tra hỗ trợ
+        const supported = await BABYLON.WebXRSessionManager.IsSessionSupportedAsync("immersive-ar");
+        if (!supported) {
+            document.getElementById("enter-ar-btn").classList.add("hidden");
+            document.getElementById("no-xr-msg").style.display = "block";
+            setStatus("ℹ️ WebXR AR không được hỗ trợ — dùng chế độ 3D Preview bên dưới");
+            return;
         }
 
-        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
-        window.fetchFromFirebase = async function() {
-            try {
-                // Tải danh mục
-                const catSnapshot = await getDocs(collection(db, "categories"));
-                categoryDisplayNames = {};
-                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
+        // Tạo XR Experience
+        xrHelper = await scene.createDefaultXRExperienceAsync({
+            uiOptions: { sessionMode: "immersive-ar", referenceSpaceType: "local-floor" },
+            optionalFeatures: true,
+        });
 
-                // Tải vật thể
-                const modelSnapshot = await getDocs(collection(db, "models"));
-                modelDatabase = {}; 
-                let firstModelUrl = "";
+        // Kích hoạt Hit Test
+        const fm = xrHelper.baseExperience.featuresManager;
+        xrHitTest = fm.enableFeature(BABYLON.WebXRFeatureName.HIT_TEST, "latest", {
+            entityTypes: ["plane", "mesh"],
+        });
 
-                modelSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const catCode = data.category || "khac"; 
-                    if (!modelDatabase[catCode]) modelDatabase[catCode] = [];
-
-                    modelDatabase[catCode].push({
-                        id: doc.id, 
-                        name: data.name || "Chưa tên",
-                        url: data.url,
-                        image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
-                    });
-                    if(!firstModelUrl) firstModelUrl = data.url;
-                });
-
-                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
-                renderCategories();
-
-            } catch (error) {
-                console.error("Lỗi:", error);
-                menuContent.innerHTML = '<p style="color: #ff2a4b;">Lỗi kết nối Firebase!</p>';
-            }
-        }
-
-        // VẼ DANH MỤC LÊN SIDEBAR
-        window.renderCategories = function() {
-            menuTitle.innerText = "Danh Mục Đồ Vật";
-            backBtn.style.display = 'none'; 
-            menuContent.innerHTML = ''; 
-
-            Object.keys(categoryDisplayNames).forEach(catCode => {
-                const div = document.createElement('div');
-                div.className = 'category-item';
-                div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
-                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
-                menuContent.appendChild(div);
-            });
-        }
-
-        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
-        window.renderItems = function(catCode, displayName) {
-            menuTitle.innerText = displayName; 
-            backBtn.style.display = 'block'; 
-            menuContent.innerHTML = ''; 
-            
-            const items = modelDatabase[catCode] || [];
-            if(items.length === 0) { menuContent.innerHTML = "<p style='color:gray;'>Chưa có vật thể.</p>"; return; }
-
-            const gridDiv = document.createElement('div');
-            gridDiv.className = 'items-grid';
-
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.innerHTML = `
-                    <button class="delete-btn" onclick="deleteModel('${item.id}', event)">🗑️</button>
-                    <img src="${item.image}" class="model-img" loading="lazy">
-                    <div class="model-name">${item.name}</div>
-                `;
-
-                card.onclick = () => {
-                    arViewer.src = item.url;
-                    window.toggleMenu(); 
-                };
-
-                gridDiv.appendChild(card);
-            });
-            menuContent.appendChild(gridDiv);
-        }
-
-        // XÓA VẬT THỂ
-        window.deleteModel = async function(docId, event) {
-            event.stopPropagation(); 
-            const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
-            if (confirmDelete) {
-                try {
-                    await deleteDoc(doc(db, "models", docId)); 
-                    alert("Đã xóa thành công!");
-                    fetchFromFirebase(); 
-                } catch (error) {
-                    alert("Lỗi khi xóa: " + error.message);
-                }
-            }
-        }
-
-        // QUẢN LÝ MODAL (FORM)
-        window.openModal = function() {
-            const selectEl = document.getElementById('inp-category');
-            selectEl.innerHTML = ''; 
-            Object.keys(categoryDisplayNames).forEach(catCode => {
-                const option = document.createElement('option');
-                option.value = catCode;
-                option.text = categoryDisplayNames[catCode];
-                selectEl.appendChild(option);
-            });
-            document.getElementById('admin-modal').style.display = 'flex';
-        }
-
-        window.closeModal = function() {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('add-form').reset();
-            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
-            document.getElementById('btn-save').disabled = false;
-            document.getElementById('btn-save').style.background = "#00e5ff";
-        }
-
-        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
-        async function uploadFileToCloudinary(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', CLOUDINARY_PRESET);
-
-            const response = await fetch(CLOUDINARY_URL, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            if (data.secure_url) {
-                return data.secure_url;
+        // Cập nhật marker theo hit-test
+        xrHitTest.onHitTestResultObservable.add(results => {
+            if (results.length > 0) {
+                marker.isVisible = true;
+                currentHit = results[0];
+                results[0].transformationMatrix.decompose(
+                    undefined,
+                    marker.rotationQuaternion,
+                    marker.position
+                );
             } else {
-                throw new Error(data.error?.message || "Tải file thất bại");
+                marker.isVisible = false;
+                currentHit = null;
             }
-        }
+        });
 
-        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
-        window.submitNewModel = async function(event) {
-            event.preventDefault(); 
-            
-            const btnSave = document.getElementById('btn-save');
-            const imgFile = document.getElementById('inp-image-file').files[0];
-            const modelFile = document.getElementById('inp-model-file').files[0];
+        // Vào AR
+        xrHelper.baseExperience.onStateChangedObservable.add(state => {
+            if (state === BABYLON.WebXRState.IN_XR) {
+                isInAR = true;
+                ground.isVisible = false;
+                setStatus(selectedModelUrl
+                    ? "🎯 Hướng camera vào sàn · Chạm màn hình để đặt: " + selectedModelName
+                    : "👆 Chọn đồ vật từ Menu rồi chạm màn hình để đặt");
+            }
+            if (state === BABYLON.WebXRState.NOT_IN_XR) {
+                isInAR = false;
+                ground.isVisible = true;
+                marker.isVisible = false;
+                setStatus("Chế độ 3D Preview — Nhấn 'Vào AR' để đặt đồ vào phòng thật");
+            }
+        });
 
-            if(!imgFile || !modelFile) {
-                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
+        // Chạm màn hình → đặt vật thể
+        scene.onPointerObservable.add(evt => {
+            if (!isInAR) return;
+            if (evt.type !== BABYLON.PointerEventTypes.POINTERDOWN) return;
+            if (!currentHit || !selectedModelUrl) {
+                if (!selectedModelUrl) setStatus("⚠️ Chưa chọn đồ vật — mở Menu để chọn");
                 return;
             }
 
-            // Khóa nút bấm và đổi hiệu ứng
-            btnSave.disabled = true;
-            btnSave.style.background = "#475569"; 
+            const pos = new BABYLON.Vector3();
+            currentHit.transformationMatrix.decompose(undefined, undefined, pos);
+            window._addModelToScene(selectedModelUrl, selectedModelName, pos);
+        });
 
-            try {
-                // 1. Tải ảnh hiển thị
-                btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
-                const imageUrl = await uploadFileToCloudinary(imgFile);
+        setStatus("✅ Babylon.js + WebXR sẵn sàng — Chọn đồ vật rồi nhấn 'Vào AR'");
+    } catch(e) {
+        console.warn("WebXR init error:", e);
+        document.getElementById("enter-ar-btn").classList.add("hidden");
+        document.getElementById("no-xr-msg").style.display = "block";
+        setStatus("ℹ️ WebXR không khả dụng — dùng chế độ 3D Preview");
+    }
+}
 
-                // 2. Tải mô hình 3D (Đợi hơi lâu)
-                btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
-                const modelUrl = await uploadFileToCloudinary(modelFile);
+window.enterAR = async function() {
+    if (!xrHelper) { showToast("WebXR chưa sẵn sàng", "error"); return; }
+    try {
+        await xrHelper.baseExperience.enterXRAsync("immersive-ar", "local-floor");
+    } catch(e) {
+        showToast("Không thể vào AR: " + e.message, "error");
+    }
+};
 
-                // 3. Đẩy thông tin vào Firebase
-                btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
-                const newModel = {
-                    name: document.getElementById('inp-name').value,
-                    category: document.getElementById('inp-category').value,
-                    image: imageUrl,
-                    url: modelUrl
-                };
+/* ============================================================
+   6. CHỌN / TƯƠNG TÁC VẬT THỂ
+   ============================================================ */
+function selectObject(obj) {
+    deselectAll();
+    selectedObj = obj;
+    document.getElementById("selected-name").textContent = obj.name;
+    document.getElementById("selected-panel").classList.add("visible");
+    // Highlight
+    obj.root.getChildMeshes().forEach(m => {
+        if (m.material) { m._origEmissive = m.material.emissiveColor; m.material.emissiveColor = new BABYLON.Color3(0, 0.3, 0.4); }
+    });
+}
 
-                await addDoc(collection(db, "models"), newModel);
-                
-                alert("🎉 Đã thêm vật thể mới thành công!");
-                closeModal();
-                fetchFromFirebase(); 
+window.deselectAll = function() {
+    if (selectedObj) {
+        selectedObj.root.getChildMeshes().forEach(m => {
+            if (m.material && m._origEmissive) m.material.emissiveColor = m._origEmissive;
+        });
+    }
+    selectedObj = null;
+    document.getElementById("selected-panel").classList.remove("visible");
+};
 
-            } catch (error) {
-                console.error("Lỗi Upload:", error);
-                alert("🚨 Lỗi: " + error.message);
-                
-                // Mở khóa nút nếu bị lỗi
-                btnSave.innerText = "Thử lại";
-                btnSave.disabled = false;
-                btnSave.style.background = "#ff2a4b";
+window.rotateSelected = function(deg) {
+    if (!selectedObj) return;
+    selectedObj.root.rotation.y += (deg * Math.PI / 180);
+};
+
+window.scaleSelected = function(factor) {
+    if (!selectedObj) return;
+    selectedObj.root.scaling.scaleInPlace(factor);
+};
+
+window.removeSelected = function() {
+    if (!selectedObj) return;
+    selectedObj.root.dispose();
+    const idx = placedObjects.indexOf(selectedObj);
+    if (idx > -1) placedObjects.splice(idx, 1);
+    selectedObj = null;
+    document.getElementById("selected-panel").classList.remove("visible");
+    updateObjectCount();
+    showToast("Đã xóa vật thể", "success");
+};
+
+window.clearAll = function() {
+    if (!confirm("Xóa tất cả vật thể khỏi scene?")) return;
+    placedObjects.forEach(o => o.root.dispose());
+    placedObjects.length = 0;
+    selectedObj = null;
+    document.getElementById("selected-panel").classList.remove("visible");
+    updateObjectCount();
+    showToast("Đã xóa tất cả", "success");
+};
+
+// Click vào sàn (chế độ 3D preview) để đặt vật thể
+scene.onPointerObservable.add(evt => {
+    if (isInAR) return;
+    if (evt.type !== BABYLON.PointerEventTypes.POINTERDOWN) return;
+    if (!selectedModelUrl) return;
+    const pick = scene.pick(scene.pointerX, scene.pointerY, m => m.name === "ground");
+    if (pick.hit && pick.pickedPoint) {
+        window._addModelToScene(selectedModelUrl, selectedModelName, pick.pickedPoint);
+    }
+});
+
+/* ============================================================
+   7. LƯU / TẢI LAYOUT FIREBASE
+   ============================================================ */
+window.saveLayout = async function() {
+    if (placedObjects.length === 0) { showToast("Chưa có vật thể để lưu", "error"); return; }
+    const btn = document.getElementById("btn-save-layout");
+    btn.disabled = true; btn.textContent = "⏳ Đang lưu...";
+    try {
+        const layout = placedObjects.map(o => ({
+            url:  o.url, name: o.name,
+            x:    parseFloat(o.root.position.x.toFixed(4)),
+            y:    parseFloat(o.root.position.y.toFixed(4)),
+            z:    parseFloat(o.root.position.z.toFixed(4)),
+            ry:   parseFloat(o.root.rotation.y.toFixed(4)),
+            sx:   parseFloat(o.root.scaling.x.toFixed(4)),
+            sy:   parseFloat(o.root.scaling.y.toFixed(4)),
+            sz:   parseFloat(o.root.scaling.z.toFixed(4)),
+        }));
+        await setDoc(doc(db, "rooms", "room_main"), { layout, savedAt: new Date().toISOString() });
+        showToast("✅ Đã lưu " + layout.length + " vật thể", "success");
+    } catch(e) {
+        showToast("Lỗi lưu: " + e.message, "error");
+    } finally {
+        btn.disabled = false; btn.textContent = "💾 Lưu phòng";
+    }
+};
+
+window.loadLayout = async function() {
+    const btn = document.getElementById("btn-load-layout");
+    btn.disabled = true; btn.textContent = "⏳ Đang tải...";
+    try {
+        const snap = await getDoc(doc(db, "rooms", "room_main"));
+        if (!snap.exists()) { showToast("Chưa có phòng được lưu", "error"); return; }
+        const { layout } = snap.data();
+
+        // Xóa scene cũ
+        placedObjects.forEach(o => o.root.dispose());
+        placedObjects.length = 0;
+
+        // Tải từng vật thể
+        for (const item of layout) {
+            const obj = await window._addModelToScene(
+                item.url, item.name,
+                new BABYLON.Vector3(item.x, item.y, item.z)
+            );
+            if (obj) {
+                obj.root.rotation.y = item.ry || 0;
+                obj.root.scaling    = new BABYLON.Vector3(item.sx || 1, item.sy || 1, item.sz || 1);
             }
         }
+        showToast("✅ Đã tải phòng (" + layout.length + " vật thể)", "success");
+    } catch(e) {
+        showToast("Lỗi tải: " + e.message, "error");
+    } finally {
+        btn.disabled = false; btn.textContent = "📂 Tải phòng";
+    }
+};
 
-        // BẮT ĐẦU CHẠY APP
+/* ============================================================
+   8. FIREBASE — DANH MỤC & VẬT THỂ
+   ============================================================ */
+window.fetchFromFirebase = async function() {
+    try {
+        // Danh mục
+        const catSnap = await getDocs(collection(db, "categories"));
+        categoryDisplayNames = {};
+        catSnap.forEach(d => { categoryDisplayNames[d.id] = d.data().name; });
+
+        // Vật thể
+        const modelSnap = await getDocs(collection(db, "models"));
+        modelDatabase = {};
+        modelSnap.forEach(d => {
+            const data = d.data();
+            const cat  = data.category || "khac";
+            if (!modelDatabase[cat]) modelDatabase[cat] = [];
+            modelDatabase[cat].push({
+                id: d.id, name: data.name || "Chưa tên",
+                url: data.url,
+                image: data.image || "https://placehold.co/200x150/1e293b/94a3b8?text=No+Image"
+            });
+        });
+
+        renderCategories();
+        setStatus("✅ Đã tải dữ liệu — Chọn đồ vật từ Menu rồi nhấn 'Vào AR'");
+    } catch(e) {
+        setStatus("❌ Lỗi Firebase: " + e.message);
+        document.getElementById("menu-content").innerHTML =
+            '<p style="color:#fca5a5;font-size:13px;">Lỗi kết nối Firebase!</p>';
+    }
+};
+
+window.renderCategories = function() {
+    document.getElementById("menu-title").textContent = "Danh Mục Đồ Vật";
+    document.getElementById("back-btn").style.display = "none";
+    const mc = document.getElementById("menu-content");
+    mc.innerHTML = "";
+    Object.keys(categoryDisplayNames).forEach(code => {
+        const div = document.createElement("div");
+        div.className = "category-item";
+        div.innerHTML = `<span>${categoryDisplayNames[code]}</span><span>❯</span>`;
+        div.onclick = () => renderItems(code, categoryDisplayNames[code]);
+        mc.appendChild(div);
+    });
+};
+
+window.renderItems = function(catCode, displayName) {
+    document.getElementById("menu-title").textContent = displayName;
+    document.getElementById("back-btn").style.display = "block";
+    const mc = document.getElementById("menu-content");
+    mc.innerHTML = "";
+
+    const items = modelDatabase[catCode] || [];
+    if (!items.length) { mc.innerHTML = "<p style='color:#64748b;font-size:13px;'>Chưa có vật thể.</p>"; return; }
+
+    const grid = document.createElement("div");
+    grid.className = "items-grid";
+
+    items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "model-card" + (selectedModelUrl === item.url ? " selected" : "");
+        card.dataset.url = item.url;
+        card.innerHTML = `
+            <button class="delete-btn" onclick="deleteModel('${item.id}',event)">🗑️</button>
+            <span class="model-badge">ĐANG CHỌN</span>
+            <img src="${item.image}" class="model-img" loading="lazy" onerror="this.src='https://placehold.co/200x150/1e293b/94a3b8?text=No+Image'">
+            <div class="model-name">${item.name}</div>
+        `;
+        card.onclick = () => {
+            // Cập nhật chọn
+            document.querySelectorAll(".model-card").forEach(c => c.classList.remove("selected"));
+            card.classList.add("selected");
+            selectedModelUrl  = item.url;
+            selectedModelName = item.name;
+
+            if (isInAR) {
+                setStatus("🎯 Hướng camera vào sàn · Chạm để đặt: " + item.name);
+            } else {
+                setStatus("👆 Nhấn vào sàn 3D để đặt thử: " + item.name + " · Hoặc nhấn 'Vào AR'");
+            }
+            toggleMenu();
+        };
+        grid.appendChild(card);
+    });
+    mc.appendChild(grid);
+};
+
+window.deleteModel = async function(docId, event) {
+    event.stopPropagation();
+    if (!confirm("Xóa vật thể này khỏi hệ thống?")) return;
+    try {
+        await deleteDoc(doc(db, "models", docId));
+        showToast("Đã xóa", "success");
         fetchFromFirebase();
-    </script>
+    } catch(e) {
+        showToast("Lỗi xóa: " + e.message, "error");
+    }
+};
+
+/* ============================================================
+   9. MODAL THÊM VẬT THỂ
+   ============================================================ */
+window.openModal = function() {
+    const sel = document.getElementById("inp-category");
+    sel.innerHTML = "";
+    Object.keys(categoryDisplayNames).forEach(code => {
+        const opt = document.createElement("option");
+        opt.value = code; opt.text = categoryDisplayNames[code];
+        sel.appendChild(opt);
+    });
+    document.getElementById("admin-modal").classList.add("open");
+};
+
+window.closeModal = function() {
+    document.getElementById("admin-modal").classList.remove("open");
+    document.getElementById("inp-name").value = "";
+    document.getElementById("inp-image-file").value = "";
+    document.getElementById("inp-model-file").value = "";
+    const btn = document.getElementById("btn-submit-model");
+    btn.textContent = "Tải Lên & Lưu"; btn.disabled = false;
+};
+
+async function uploadToCloudinary(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", CLOUDINARY_PRESET);
+    const res  = await fetch(CLOUDINARY_URL, { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.secure_url) return data.secure_url;
+    throw new Error(data.error?.message || "Upload thất bại");
+}
+
+window.submitNewModel = async function() {
+    const name      = document.getElementById("inp-name").value.trim();
+    const category  = document.getElementById("inp-category").value;
+    const imgFile   = document.getElementById("inp-image-file").files[0];
+    const modelFile = document.getElementById("inp-model-file").files[0];
+    if (!name || !imgFile || !modelFile) { showToast("Vui lòng điền đầy đủ thông tin", "error"); return; }
+
+    const btn = document.getElementById("btn-submit-model");
+    btn.disabled = true;
+
+    try {
+        btn.textContent = "⏳ Đang tải ảnh...";
+        const imageUrl = await uploadToCloudinary(imgFile);
+
+        btn.textContent = "⏳ Đang tải model 3D...";
+        const modelUrl = await uploadToCloudinary(modelFile);
+
+        btn.textContent = "⏳ Đang lưu Firebase...";
+        await addDoc(collection(db, "models"), { name, category, image: imageUrl, url: modelUrl });
+
+        showToast("🎉 Đã thêm thành công!", "success");
+        closeModal();
+        fetchFromFirebase();
+    } catch(e) {
+        showToast("Lỗi: " + e.message, "error");
+        btn.textContent = "Thử lại"; btn.disabled = false;
+    }
+};
+
+/* ============================================================
+   10. UI HELPERS
+   ============================================================ */
+window.toggleMenu = function() {
+    document.getElementById("side-menu").classList.toggle("open");
+};
+
+function setStatus(msg) {
+    document.getElementById("status-bar").textContent = msg;
+}
+
+function updateObjectCount() {
+    document.getElementById("obj-num").textContent = placedObjects.length;
+}
+
+let toastTimer = null;
+window.showToast = function(msg, type = "") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = "show " + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ""; }, 2800);
+};
+
+/* ============================================================
+   11. KHỞI ĐỘNG
+   ============================================================ */
+(async function init() {
+    // Ẩn loading sau khi engine sẵn sàng
+    setTimeout(() => {
+        document.getElementById("loading-overlay").classList.add("hidden");
+    }, 800);
+
+    await fetchFromFirebase();
+    await initWebXR();
+})();
+
+</script>
 </body>
 </html>
