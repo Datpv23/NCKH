@@ -1,908 +1,387 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VKU AR — Multi-Object Room Setup</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VKU AR - Full CMS & Cloudinary Edition</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/components.js" defer></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
-  <style>
-    /* =============================================
-       RESET & BASE
-    ============================================= */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1426; font-family: 'Segoe UI', sans-serif; }
+    <style>
+        /* --- TÙY CHỈNH KHU VỰC AR --- */
+        .ar-container { position: relative; max-width: 900px; margin: 0 auto; overflow: hidden; border-radius: 16px; }
+        .menu-toggle-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 10;
+            background: rgba(18, 35, 67, 0.85); color: white; border: 1px solid var(--ar-cyan, #00e5ff);
+            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px);
+        }
+        .menu-toggle-btn:hover { background: rgba(0, 229, 255, 0.2); }
 
-    /* Canvas Three.js chiếm toàn màn hình */
-    #ar-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+        /* --- SIDEBAR MENU --- */
+        .side-menu {
+            position: absolute; top: 0; left: -100%; width: 300px; height: 100%;
+            background: rgba(11, 20, 38, 0.95); z-index: 20; transition: left 0.4s ease; 
+            display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        }
+        .side-menu.open { left: 0; }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
+        .menu-header h3 { margin: 0; font-size: 16px; }
+        .icon-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+        .icon-btn:hover { color: #00e5ff; }
+        #back-btn { display: none; font-size: 14px; color: #94a3b8; }
+        .menu-content { flex: 1; overflow-y: auto; padding: 15px; }
 
-    /* =============================================
-       SPLASH SCREEN
-    ============================================= */
-    #splash {
-      position: fixed; inset: 0; z-index: 9999;
-      background: #0b1426; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 20px;
-      transition: opacity 0.6s;
-    }
-    #splash.hidden { opacity: 0; pointer-events: none; }
-    .splash-logo { font-size: 2rem; font-weight: 700; color: #00e5ff; letter-spacing: 4px; }
-    .splash-sub { font-size: 0.85rem; color: #64748b; letter-spacing: 2px; }
-    .splash-bar { width: 200px; height: 3px; background: #1e293b; border-radius: 2px; overflow: hidden; }
-    .splash-fill { height: 100%; background: #00e5ff; animation: fill 1.8s ease forwards; }
-    @keyframes fill { from { width: 0; } to { width: 100%; } }
+        /* Nút chung */
+        .category-item {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; margin-bottom: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;
+            display: flex; justify-content: space-between;
+        }
+        .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: #00e5ff; }
 
-    /* =============================================
-       NÚT BẬT AR
-    ============================================= */
-    #btn-start-ar {
-      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-      z-index: 200; padding: 16px 40px; border-radius: 50px;
-      background: #00e5ff; color: #0b1426; font-size: 1rem; font-weight: 700;
-      border: none; cursor: pointer; letter-spacing: 1px;
-      box-shadow: 0 0 24px rgba(0,229,255,0.4);
-      transition: transform .2s, box-shadow .2s;
-    }
-    #btn-start-ar:hover { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 36px rgba(0,229,255,0.6); }
-    #btn-start-ar:disabled { opacity: 0.4; cursor: not-allowed; }
+        /* --- LƯỚI VẬT THỂ & NÚT XÓA --- */
+        .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .model-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center; position: relative;
+        }
+        .model-card:hover { border-color: #00e5ff; }
+        .model-img { width: 100%; height: 80px; object-fit: cover; background-color: #fff; }
+        .model-name { padding: 8px 5px; color: white; font-size: 11px; font-weight: 600; }
+        
+        .delete-btn {
+            position: absolute; top: 5px; right: 5px; background: rgba(200, 16, 46, 0.9);
+            color: white; border: none; border-radius: 5px; padding: 4px; font-size: 12px; cursor: pointer;
+        }
+        .delete-btn:hover { background: red; transform: scale(1.1); }
 
-    /* =============================================
-       MÀNG HỖ TRỢ KHÔNG (fallback)
-    ============================================= */
-    #no-xr {
-      display: none; position: fixed; inset: 0; z-index: 500;
-      background: #0b1426; align-items: center; justify-content: center;
-      flex-direction: column; gap: 16px; text-align: center; padding: 40px;
-    }
-    #no-xr h2 { color: #ff4b6e; font-size: 1.4rem; }
-    #no-xr p  { color: #64748b; font-size: 0.9rem; line-height: 1.7; max-width: 320px; }
-
-    /* =============================================
-       OVERLAY AR (hiện sau khi bật AR)
-    ============================================= */
-    #ar-overlay {
-      display: none; position: fixed; inset: 0; z-index: 100;
-      pointer-events: none;
-    }
-    #ar-overlay.active { display: block; }
-
-    /* Toolbar dưới cùng */
-    #ar-toolbar {
-      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 12px; pointer-events: all;
-      background: rgba(11,20,38,0.85); border: 1px solid rgba(0,229,255,0.2);
-      padding: 10px 16px; border-radius: 50px; backdrop-filter: blur(10px);
-    }
-    .tool-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-      color: #94a3b8; font-size: 10px; font-weight: 600; letter-spacing: .5px;
-      padding: 10px 14px; border-radius: 12px; cursor: pointer; transition: .2s;
-      min-width: 56px;
-    }
-    .tool-btn svg { width: 20px; height: 20px; fill: currentColor; }
-    .tool-btn:hover, .tool-btn.active {
-      background: rgba(0,229,255,0.15); border-color: #00e5ff; color: #00e5ff;
-    }
-    .tool-btn.danger:hover, .tool-btn.danger.active {
-      background: rgba(255,75,110,0.15); border-color: #ff4b6e; color: #ff4b6e;
-    }
-    .tool-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* Sidebar chọn model */
-    #ar-sidebar {
-      position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
-      background: rgba(11,20,38,0.95); border-right: 1px solid rgba(0,229,255,0.15);
-      display: flex; flex-direction: column; transition: left .35s ease;
-      pointer-events: all; backdrop-filter: blur(12px);
-    }
-    #ar-sidebar.open { left: 0; }
-    .sidebar-header {
-      padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .sidebar-header h3 { color: #00e5ff; font-size: 14px; margin: 0; }
-    .sidebar-close { background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; }
-    .sidebar-close:hover { color: #fff; }
-    .sidebar-body { flex: 1; overflow-y: auto; padding: 12px; }
-
-    /* Breadcrumb navigation */
-    #sidebar-breadcrumb {
-      display: flex; align-items: center; gap: 6px; padding: 0 0 10px 0;
-      font-size: 12px; color: #64748b;
-    }
-    #btn-back-cat {
-      display: none; background: none; border: none; color: #00e5ff;
-      font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-    }
-    #btn-back-cat:hover { background: rgba(0,229,255,0.1); }
-
-    /* Danh mục */
-    .cat-item {
-      display: flex; justify-content: space-between; align-items: center;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-      padding: 14px; border-radius: 10px; color: #e2e8f0; cursor: pointer;
-      margin-bottom: 8px; font-size: 13px; font-weight: 600; transition: .2s;
-    }
-    .cat-item:hover { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.3); }
-
-    /* Lưới model */
-    .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .model-card {
-      border-radius: 10px; overflow: hidden; cursor: pointer; position: relative;
-      border: 2px solid transparent; transition: .2s; background: rgba(255,255,255,0.04);
-    }
-    .model-card:hover { border-color: rgba(0,229,255,0.5); }
-    .model-card.selected { border-color: #00e5ff; box-shadow: 0 0 12px rgba(0,229,255,0.3); }
-    .model-card img { width: 100%; height: 80px; object-fit: cover; display: block; background: #1e293b; }
-    .model-card .model-name { padding: 7px 8px; color: #e2e8f0; font-size: 11px; font-weight: 600; }
-    .model-del {
-      position: absolute; top: 5px; right: 5px;
-      background: rgba(255,75,110,0.85); color: white; border: none;
-      border-radius: 5px; padding: 3px 6px; font-size: 11px; cursor: pointer;
-      transition: .2s;
-    }
-    .model-del:hover { background: #ff4b6e; transform: scale(1.1); }
-
-    /* Modal thêm model */
-    #modal-add {
-      display: none; position: fixed; inset: 0; z-index: 9000;
-      background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-    #modal-add.open { display: flex; }
-    .modal-box {
-      background: #122343; border: 1px solid #00e5ff; border-radius: 16px;
-      padding: 22px; width: 90%; max-width: 400px; color: #e2e8f0;
-      box-shadow: 0 12px 40px rgba(0,229,255,0.15);
-    }
-    .modal-box h3 { color: #00e5ff; margin-bottom: 18px; text-align: center; font-size: 16px; }
-    .form-field { margin-bottom: 14px; }
-    .form-field label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 5px; }
-    .form-field input[type="text"],
-    .form-field select {
-      width: 100%; padding: 10px; border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3);
-      color: #e2e8f0; font-size: 13px;
-    }
-    .form-field input[type="file"] {
-      width: 100%; color: #94a3b8; font-size: 12px;
-      background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.2);
-      border-radius: 8px; padding: 8px;
-    }
-    .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
-    .btn-cancel { flex:1; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:8px; cursor:pointer; font-size:13px; }
-    .btn-submit { flex:1; padding:10px; background:#00e5ff; color:#0b1426; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-size:13px; }
-    .btn-submit:disabled { opacity:0.6; cursor:not-allowed; }
-
-    /* Toast thông báo */
-    #toast {
-      position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: rgba(11,20,38,0.95); border: 1px solid rgba(0,229,255,0.3);
-      color: #e2e8f0; padding: 10px 20px; border-radius: 30px; font-size: 13px;
-      z-index: 9999; opacity: 0; transition: opacity .3s, transform .3s;
-      pointer-events: none; white-space: nowrap;
-    }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.success { border-color: #22c55e; color: #86efac; }
-    #toast.error   { border-color: #ff4b6e; color: #fca5a5; }
-
-    /* Chỉ dẫn khi chưa có model nào */
-    #ar-hint {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      text-align: center; color: rgba(255,255,255,0.5); pointer-events: none;
-      font-size: 13px; line-height: 1.8;
-    }
-    #ar-hint.hidden { display: none; }
-
-    /* Badge số lượng object đã đặt */
-    #obj-count {
-      position: absolute; top: 16px; right: 16px;
-      background: rgba(0,229,255,0.15); border: 1px solid rgba(0,229,255,0.3);
-      color: #00e5ff; font-size: 12px; font-weight: 700;
-      padding: 5px 12px; border-radius: 20px; pointer-events: none;
-    }
-
-    /* Nút mở sidebar (trong AR) */
-    #btn-open-sidebar {
-      position: absolute; top: 16px; left: 16px;
-      background: rgba(11,20,38,0.85); border: 1px solid rgba(0,229,255,0.3);
-      color: #e2e8f0; padding: 8px 14px; border-radius: 10px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      pointer-events: all; display: flex; align-items: center; gap: 6px;
-      backdrop-filter: blur(6px);
-    }
-    #btn-open-sidebar:hover { background: rgba(0,229,255,0.15); border-color: #00e5ff; color: #00e5ff; }
-
-    /* Loading indicator khi tải model */
-    #loading-model {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      text-align: center; color: #00e5ff; display: none;
-    }
-    #loading-model.show { display: block; }
-    .spinner {
-      width: 32px; height: 32px; border: 3px solid rgba(0,229,255,0.2);
-      border-top-color: #00e5ff; border-radius: 50%;
-      animation: spin .8s linear infinite; margin: 0 auto 8px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+        /* Nút thêm mới */
+        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        
+        /* --- MODAL THÊM VẬT THỂ --- */
+        #admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
+            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
+        .form-group input[type="text"], .form-group select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
+        }
+        .form-group input[type="file"] {
+            width: 100%; padding: 8px; font-size: 13px; color: #94a3b8;
+            background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px;
+        }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
+    </style>
 </head>
 <body>
+    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
+    <vku-header></vku-header>
 
-<!-- SPLASH -->
-<div id="splash">
-  <div class="splash-logo">VKU AR</div>
-  <div class="splash-sub">MULTI-OBJECT ROOM SETUP</div>
-  <div class="splash-bar"><div class="splash-fill"></div></div>
-</div>
+    <main>
+        <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">Truy Cập AR Camera</h1>
+        <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
+            <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
+                <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
+                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
+            </p>
+        </div>
 
-<!-- CANVAS THREE.JS -->
-<canvas id="ar-canvas"></canvas>
+        <div class="ar-container">
+            <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
 
-<!-- FALLBACK -->
-<div id="no-xr">
-  <h2>Thiết bị không hỗ trợ AR</h2>
-  <p>Cần Android Chrome 81+ với ARCore, hoặc iOS 16+ Safari.<br>Thử mở trên điện thoại thật.</p>
-</div>
+            <div id="side-menu" class="side-menu">
+                <div class="menu-header">
+                    <button id="back-btn" class="icon-btn" onclick="renderCategories()">⬅</button>
+                    <h3 id="menu-title">Danh Mục</h3>
+                    <button class="icon-btn" onclick="toggleMenu()">✖</button>
+                </div>
+                <div id="menu-content" class="menu-content"><p style="color: #00e5ff;">Đang tải...</p></div>
+                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="add-btn" onclick="openModal()">➕ Thêm Vật Thể Mới</button>
+                </div>
+            </div>
+            
+            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
+                <button slot="ar-button" class="ar-button">
+                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                    Khởi động Hologram
+                </button>
+            </model-viewer>
+        </div>
+    </main>
 
-<!-- NÚT BẬT AR (màn hình chính) -->
-<button id="btn-start-ar">▶ Bắt đầu AR</button>
-
-<!-- OVERLAY AR -->
-<div id="ar-overlay">
-  <button id="btn-open-sidebar">☰ Chọn đồ vật</button>
-  <div id="obj-count">0 vật thể</div>
-  <div id="ar-hint">Quét sàn nhà...<br>Vòng tròn xanh sẽ hiện khi tìm thấy bề mặt</div>
-  <div id="loading-model"><div class="spinner"></div><div style="font-size:12px">Đang tải model...</div></div>
-
-  <!-- SIDEBAR -->
-  <div id="ar-sidebar">
-    <div class="sidebar-header">
-      <h3 id="sidebar-title">Danh mục đồ vật</h3>
-      <button class="sidebar-close" id="btn-close-sidebar">✖</button>
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
+            <form id="add-form" onsubmit="submitNewModel(event)">
+                <div class="form-group">
+                    <label>Tên hiển thị:</label>
+                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
+                </div>
+                <div class="form-group">
+                    <label>Danh mục (Lấy từ Firebase):</label>
+                    <select id="inp-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
+                    <input type="file" id="inp-image-file" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Chọn File 3D (.glb):</label>
+                    <input type="file" id="inp-model-file" accept=".glb" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
+                </div>
+            </form>
+        </div>
     </div>
-    <div class="sidebar-body">
-      <div id="sidebar-breadcrumb">
-        <button id="btn-back-cat">⬅ Danh mục</button>
-        <span id="breadcrumb-text">Tất cả danh mục</span>
-      </div>
-      <div id="sidebar-content"><p style="color:#64748b;font-size:13px">Đang tải...</p></div>
-    </div>
-    <div style="padding:12px; border-top:1px solid rgba(255,255,255,0.08);">
-      <button onclick="openModalAdd()"
-        style="width:100%;padding:11px;background:#00e5ff;color:#0b1426;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:13px;">
-        ➕ Thêm vật thể mới
-      </button>
-    </div>
-  </div>
 
-  <!-- TOOLBAR -->
-  <div id="ar-toolbar">
-    <!-- Đặt vật thể -->
-    <button class="tool-btn active" id="btn-mode-place" onclick="setMode('place')" title="Tap sàn để đặt vật thể">
-      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
-      ĐẶT
-    </button>
-    <!-- Chọn & di chuyển -->
-    <button class="tool-btn" id="btn-mode-select" onclick="setMode('select')" title="Tap vào vật thể đã đặt để chọn">
-      <svg viewBox="0 0 24 24"><path d="M13.64 21.97C13.14 22.21 12.54 22 12.31 21.5L10.13 16.76L7.62 19.78C7.45 20 7.21 20.1 6.97 20.1C6.72 20.1 6.47 20 6.3 19.82C5.95 19.45 5.95 18.83 6.3 18.46L8.82 15.44L4.07 13.32C3.6 13.11 3.36 12.5 3.57 12C3.79 11.5 4.36 11.27 4.87 11.44L20.59 16.97C21.11 17.15 21.37 17.73 21.19 18.24C21 18.75 20.44 19.03 19.93 18.85L13.64 21.97Z"/></svg>
-      CHỌN
-    </button>
-    <!-- Xoay object đã chọn -->
-    <button class="tool-btn" id="btn-rotate" onclick="rotateSelected()" title="Xoay vật thể 45°" disabled>
-      <svg viewBox="0 0 24 24"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg>
-      XOAY
-    </button>
-    <!-- Xóa object đã chọn -->
-    <button class="tool-btn danger" id="btn-delete" onclick="deleteSelected()" title="Xóa vật thể đang chọn" disabled>
-      <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-      XÓA
-    </button>
-    <!-- Xóa tất cả -->
-    <button class="tool-btn danger" onclick="clearAll()" title="Xóa tất cả vật thể">
-      <svg viewBox="0 0 24 24"><path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12z"/></svg>
-      TẤT CẢ
-    </button>
-    <!-- Thoát AR -->
-    <button class="tool-btn" onclick="exitAR()" style="color:#ff4b6e">
-      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-      THOÁT
-    </button>
-  </div>
-</div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-<!-- MODAL THÊM VẬT THỂ -->
-<div id="modal-add">
-  <div class="modal-box">
-    <h3>Thêm vật thể mới</h3>
-    <div class="form-field">
-      <label>Tên hiển thị</label>
-      <input type="text" id="inp-name" placeholder="VD: Bàn học gỗ">
-    </div>
-    <div class="form-field">
-      <label>Danh mục</label>
-      <select id="inp-cat"></select>
-    </div>
-    <div class="form-field">
-      <label>Ảnh thumbnail (.png / .jpg)</label>
-      <input type="file" id="inp-img" accept="image/*">
-    </div>
-    <div class="form-field">
-      <label>File 3D (.glb)</label>
-      <input type="file" id="inp-glb" accept=".glb">
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModalAdd()">Hủy</button>
-      <button class="btn-submit" id="btn-save-model" onclick="submitModel()">Tải lên & Lưu</button>
-    </div>
-  </div>
-</div>
+        // ==========================================
+        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
+        // ==========================================
+        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
 
-<!-- TOAST -->
-<div id="toast"></div>
-
-
-<!-- =============================================
-     FIREBASE SDK
-============================================= -->
-<script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc }
-                            from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-// ─── CẤU HÌNH — thay bằng config của bạn nếu khác ───────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-  authDomain:        "vku-ar-project.firebaseapp.com",
-  projectId:         "vku-ar-project",
-  storageBucket:     "vku-ar-project.firebasestorage.app",
+        // ==========================================
+        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
+        // ==========================================
+        const firebaseConfig = {
+  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+  authDomain: "vku-ar-project.firebaseapp.com",
+  projectId: "vku-ar-project",
+  storageBucket: "vku-ar-project.firebasestorage.app",
   messagingSenderId: "595437202444",
-  appId:             "1:595437202444:web:7939802383d326eee75229"
+  appId: "1:595437202444:web:7939802383d326eee75229",
+  measurementId: "G-QS4HC8MPGT"
 };
 
-const CLOUDINARY_URL    = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
-const CLOUDINARY_PRESET = "vku_ar_preset";
-// ─────────────────────────────────────────────────────────────────────────────
-
-const app = initializeApp(FIREBASE_CONFIG);
-const db  = getFirestore(app);
-
-// Dữ liệu cục bộ
-window._categories = {};   // { catId: "Tên danh mục" }
-window._models     = {};   // { catId: [ {id, name, url, image} ] }
-window._selectedModelUrl = null;  // URL .glb đang chọn để đặt
-window._selectedModelName = null;
-
-// ── Tải dữ liệu Firebase ──────────────────────────────────────────────────
-window.fetchData = async function() {
-  try {
-    const catSnap = await getDocs(collection(db, "categories"));
-    window._categories = {};
-    catSnap.forEach(d => { window._categories[d.id] = d.data().name; });
-
-    const modSnap = await getDocs(collection(db, "models"));
-    window._models = {};
-    modSnap.forEach(d => {
-      const data = d.data();
-      const cat  = data.category || "khac";
-      if (!window._models[cat]) window._models[cat] = [];
-      window._models[cat].push({ id: d.id, name: data.name, url: data.url, image: data.image || "" });
-    });
-
-    window.renderCategories();
-  } catch(e) {
-    document.getElementById("sidebar-content").innerHTML =
-      '<p style="color:#ff4b6e;font-size:13px">Lỗi Firebase: ' + e.message + '</p>';
-  }
-};
-
-// ── Vẽ danh mục ─────────────────────────────────────────────────────────────
-window.renderCategories = function() {
-  const content = document.getElementById("sidebar-content");
-  document.getElementById("sidebar-title").textContent = "Danh mục đồ vật";
-  document.getElementById("btn-back-cat").style.display = "none";
-  document.getElementById("breadcrumb-text").textContent = "Tất cả danh mục";
-  content.innerHTML = "";
-
-  Object.keys(window._categories).forEach(catId => {
-    const div = document.createElement("div");
-    div.className = "cat-item";
-    div.innerHTML = `<span>${window._categories[catId]}</span><span>❯</span>`;
-    div.onclick = () => window.renderModels(catId);
-    content.appendChild(div);
-  });
-};
-
-// ── Vẽ model trong danh mục ──────────────────────────────────────────────────
-window.renderModels = function(catId) {
-  const content  = document.getElementById("sidebar-content");
-  const catName  = window._categories[catId] || catId;
-  document.getElementById("sidebar-title").textContent = catName;
-  document.getElementById("btn-back-cat").style.display = "inline-block";
-  document.getElementById("breadcrumb-text").textContent = catName;
-  content.innerHTML = "";
-
-  const items = window._models[catId] || [];
-  if (items.length === 0) {
-    content.innerHTML = '<p style="color:#64748b;font-size:13px">Chưa có vật thể nào.</p>';
-    return;
-  }
-
-  const grid = document.createElement("div");
-  grid.className = "model-grid";
-  items.forEach(item => {
-    const card = document.createElement("div");
-    card.className = "model-card" + (window._selectedModelUrl === item.url ? " selected" : "");
-    card.id = "card-" + item.id;
-    card.innerHTML = `
-      <button class="model-del" onclick="deleteModelFromDB('${item.id}','${catId}',event)">🗑</button>
-      <img src="${item.image || 'https://placehold.co/160x80/1e293b/64748b?text=No+Img'}" loading="lazy" alt="${item.name}">
-      <div class="model-name">${item.name}</div>`;
-    card.onclick = () => window.chooseModel(item.url, item.name, card);
-    grid.appendChild(card);
-  });
-  content.appendChild(grid);
-};
-
-// ── Chọn model để đặt ────────────────────────────────────────────────────────
-window.chooseModel = function(url, name, cardEl) {
-  window._selectedModelUrl  = url;
-  window._selectedModelName = name;
-  // highlight
-  document.querySelectorAll(".model-card").forEach(c => c.classList.remove("selected"));
-  if (cardEl) cardEl.classList.add("selected");
-  // tự động chuyển sang mode Place
-  window.setMode("place");
-  // đóng sidebar
-  document.getElementById("ar-sidebar").classList.remove("open");
-  window.showToast(`Đã chọn: ${name} — Tap sàn để đặt`, "success");
-};
-
-// ── Xóa model khỏi Firebase ──────────────────────────────────────────────────
-window.deleteModelFromDB = async function(docId, catId, event) {
-  event.stopPropagation();
-  if (!confirm("Xóa vật thể này khỏi hệ thống?")) return;
-  try {
-    await deleteDoc(doc(db, "models", docId));
-    await window.fetchData();
-    window.renderModels(catId);
-    window.showToast("Đã xóa khỏi Firebase", "success");
-  } catch(e) {
-    window.showToast("Lỗi xóa: " + e.message, "error");
-  }
-};
-
-// ── Modal thêm mới ───────────────────────────────────────────────────────────
-window.openModalAdd = function() {
-  const sel = document.getElementById("inp-cat");
-  sel.innerHTML = "";
-  Object.keys(window._categories).forEach(catId => {
-    const opt = document.createElement("option");
-    opt.value = catId; opt.text = window._categories[catId];
-    sel.appendChild(opt);
-  });
-  document.getElementById("modal-add").classList.add("open");
-};
-
-window.closeModalAdd = function() {
-  document.getElementById("modal-add").classList.remove("open");
-  document.getElementById("add-form-inner")?.reset();
-  const btn = document.getElementById("btn-save-model");
-  btn.textContent = "Tải lên & Lưu"; btn.disabled = false;
-};
-
-async function uploadCloudinary(file) {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("upload_preset", CLOUDINARY_PRESET);
-  const res  = await fetch(CLOUDINARY_URL, { method: "POST", body: fd });
-  const data = await res.json();
-  if (data.secure_url) return data.secure_url;
-  throw new Error(data.error?.message || "Upload thất bại");
-}
-
-window.submitModel = async function() {
-  const name     = document.getElementById("inp-name").value.trim();
-  const catId    = document.getElementById("inp-cat").value;
-  const imgFile  = document.getElementById("inp-img").files[0];
-  const glbFile  = document.getElementById("inp-glb").files[0];
-  const btn      = document.getElementById("btn-save-model");
-
-  if (!name || !catId || !imgFile || !glbFile) {
-    window.showToast("Vui lòng điền đầy đủ tất cả các trường", "error"); return;
-  }
-
-  btn.disabled = true;
-  try {
-    btn.textContent = "⏳ Đang tải ảnh...";
-    const imageUrl = await uploadCloudinary(imgFile);
-    btn.textContent = "⏳ Đang tải file 3D...";
-    const modelUrl = await uploadCloudinary(glbFile);
-    btn.textContent = "⏳ Lưu Firebase...";
-    await addDoc(collection(db, "models"), { name, category: catId, image: imageUrl, url: modelUrl });
-    window.showToast("Thêm thành công!", "success");
-    window.closeModalAdd();
-    await window.fetchData();
-  } catch(e) {
-    window.showToast("Lỗi: " + e.message, "error");
-    btn.textContent = "Thử lại"; btn.disabled = false;
-  }
-};
-
-// Khởi động
-window.fetchData();
-</script>
-
-
-<!-- =============================================
-     THREE.JS + WEBXR ENGINE
-============================================= -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
-  }
-}
-</script>
-
-<script type="module">
-import * as THREE               from "three";
-import { GLTFLoader }           from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader }          from "three/addons/loaders/DRACOLoader.js";
-
-// ═══════════════════════════════════════════════════════════════
-//  1. KHỞI TẠO SCENE / RENDERER / CAMERA
-// ═══════════════════════════════════════════════════════════════
-const canvas   = document.getElementById("ar-canvas");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.xr.enabled = true;
-
-const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
-
-// Ánh sáng
-const hemi  = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
-const dir   = new THREE.DirectionalLight(0xffffff, 1.0);
-dir.position.set(5, 10, 5);
-scene.add(hemi, dir);
-
-// Resize
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  2. GLTF LOADER với cache thủ công
-//     (tránh tải lại cùng 1 file nhiều lần)
-// ═══════════════════════════════════════════════════════════════
-const gltfLoader  = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/libs/draco/");
-gltfLoader.setDRACOLoader(dracoLoader);
-
-const _modelCache = {};  // url → gltf.scene (đã load)
-
-async function loadModel(url) {
-  if (_modelCache[url]) {
-    // Clone từ cache để mỗi instance là object độc lập
-    return _modelCache[url].clone();
-  }
-  const gltf = await gltfLoader.loadAsync(url);
-  _modelCache[url] = gltf.scene;
-  return gltf.scene.clone();
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  3. RETICLE (vòng tròn chỉ vị trí đặt)
-// ═══════════════════════════════════════════════════════════════
-const reticleGeo = new THREE.RingGeometry(0.08, 0.11, 32).rotateX(-Math.PI / 2);
-const reticleMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
-const reticle    = new THREE.Mesh(reticleGeo, reticleMat);
-reticle.matrixAutoUpdate = false;
-reticle.visible = false;
-scene.add(reticle);
-
-// Điểm trung tâm reticle (dùng để đặt model)
-const _reticlePos = new THREE.Vector3();
-const _reticleQuat = new THREE.Quaternion();
-
-// ═══════════════════════════════════════════════════════════════
-//  4. QUẢN LÝ OBJECT ĐÃ ĐẶT
-// ═══════════════════════════════════════════════════════════════
-const placedObjects = [];   // [ { mesh, url, name } ]
-let   selectedMesh  = null;
-
-function updateObjCount() {
-  const el = document.getElementById("obj-count");
-  el.textContent = placedObjects.length + " vật thể";
-  // Ẩn hint khi đã có object
-  document.getElementById("ar-hint").classList.toggle("hidden", placedObjects.length > 0 || !reticle.visible);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  5. HIT TEST
-// ═══════════════════════════════════════════════════════════════
-let hitTestSource          = null;
-let hitTestSourceRequested = false;
-
-// ═══════════════════════════════════════════════════════════════
-//  6. RAYCASTER để chọn object đã đặt
-// ═══════════════════════════════════════════════════════════════
-const raycaster = new THREE.Raycaster();
-
-// Bắn tia từ chính giữa màn hình trong không gian XR
-function raycastCenter() {
-  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const meshes = placedObjects.map(o => o.mesh);
-  return raycaster.intersectObjects(meshes, true);
-}
-
-// Leo lên gốc GLTF (Three.js tạo nhiều tầng node)
-function findRootObject(obj) {
-  let cur = obj;
-  while (cur.parent && !placedObjects.find(o => o.mesh === cur)) {
-    cur = cur.parent;
-  }
-  return cur;
-}
-
-// Highlight / bỏ highlight
-function setHighlight(mesh, on) {
-  if (!mesh) return;
-  mesh.traverse(child => {
-    if (child.isMesh && child.material) {
-      if (on) {
-        child.material = child.material.clone();
-        child.material.emissive = new THREE.Color(0x00e5ff);
-        child.material.emissiveIntensity = 0.35;
-      } else {
-        child.material.emissive = new THREE.Color(0x000000);
-        child.material.emissiveIntensity = 0;
-      }
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  7. MODES: place | select
-// ═══════════════════════════════════════════════════════════════
-let currentMode = "place";
-
-window.setMode = function(mode) {
-  currentMode = mode;
-  document.getElementById("btn-mode-place").classList.toggle("active",  mode === "place");
-  document.getElementById("btn-mode-select").classList.toggle("active", mode === "select");
-  reticle.visible = mode === "place" && hitTestSource !== null;
-  if (mode === "place") {
-    setHighlight(selectedMesh, false);
-    selectedMesh = null;
-    document.getElementById("btn-rotate").disabled = true;
-    document.getElementById("btn-delete").disabled = true;
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  8. ĐẶT VẬT THỂ khi tap (mode: place)
-// ═══════════════════════════════════════════════════════════════
-async function placeObject() {
-  if (!reticle.visible) {
-    window.showToast("Chưa tìm thấy bề mặt — di chuyển camera", "error");
-    return;
-  }
-  const url  = window._selectedModelUrl;
-  const name = window._selectedModelName;
-  if (!url) {
-    window.showToast("Chưa chọn vật thể từ menu", "error");
-    // tự mở sidebar
-    document.getElementById("ar-sidebar").classList.add("open");
-    return;
-  }
-
-  // Lưu vị trí ngay (reticle có thể thay đổi trong khi load async)
-  reticle.matrix.decompose(_reticlePos, _reticleQuat, new THREE.Vector3());
-  const pos  = _reticlePos.clone();
-  const quat = _reticleQuat.clone();
-
-  // Hiện loading
-  document.getElementById("loading-model").classList.add("show");
-  try {
-    const mesh = await loadModel(url);
-
-    // Auto-scale: fit trong hộp 0.5m
-    const box    = new THREE.Box3().setFromObject(mesh);
-    const size   = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    if (maxDim > 0) mesh.scale.setScalar(0.5 / maxDim);
-
-    mesh.position.copy(pos);
-    mesh.quaternion.copy(quat);
-    scene.add(mesh);
-
-    placedObjects.push({ mesh, url, name });
-    updateObjCount();
-    window.showToast(`Đã đặt: ${name}`, "success");
-  } catch(e) {
-    window.showToast("Lỗi tải model: " + e.message, "error");
-  } finally {
-    document.getElementById("loading-model").classList.remove("show");
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  9. CHỌN VẬT THỂ khi tap (mode: select)
-// ═══════════════════════════════════════════════════════════════
-function selectObject() {
-  const hits = raycastCenter();
-  if (hits.length === 0) {
-    // Tap vào khoảng trống → bỏ chọn
-    setHighlight(selectedMesh, false);
-    selectedMesh = null;
-    document.getElementById("btn-rotate").disabled = true;
-    document.getElementById("btn-delete").disabled = true;
-    return;
-  }
-  const root = findRootObject(hits[0].object);
-  if (!placedObjects.find(o => o.mesh === root)) return;
-
-  setHighlight(selectedMesh, false); // bỏ highlight cũ
-  selectedMesh = root;
-  setHighlight(selectedMesh, true);
-  document.getElementById("btn-rotate").disabled = false;
-  document.getElementById("btn-delete").disabled = false;
-  const item = placedObjects.find(o => o.mesh === root);
-  if (item) window.showToast(`Đã chọn: ${item.name}`, "success");
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  10. XOAY / XÓA / XÓA TẤT CẢ
-// ═══════════════════════════════════════════════════════════════
-window.rotateSelected = function() {
-  if (!selectedMesh) return;
-  selectedMesh.rotation.y += Math.PI / 4;  // 45°
-};
-
-window.deleteSelected = function() {
-  if (!selectedMesh) return;
-  scene.remove(selectedMesh);
-  const idx = placedObjects.findIndex(o => o.mesh === selectedMesh);
-  if (idx !== -1) placedObjects.splice(idx, 1);
-  selectedMesh = null;
-  document.getElementById("btn-rotate").disabled = true;
-  document.getElementById("btn-delete").disabled = true;
-  updateObjCount();
-  window.showToast("Đã xóa vật thể", "success");
-};
-
-window.clearAll = function() {
-  if (placedObjects.length === 0) return;
-  if (!confirm(`Xóa tất cả ${placedObjects.length} vật thể?`)) return;
-  placedObjects.forEach(o => scene.remove(o.mesh));
-  placedObjects.length = 0;
-  selectedMesh = null;
-  document.getElementById("btn-rotate").disabled = true;
-  document.getElementById("btn-delete").disabled = true;
-  updateObjCount();
-  window.showToast("Đã xóa tất cả", "success");
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  11. WEBXR SESSION SETUP
-// ═══════════════════════════════════════════════════════════════
-window.exitAR = function() {
-  renderer.xr.getSession()?.end();
-};
-
-async function startAR() {
-  if (!navigator.xr) { showNoXR(); return; }
-
-  const supported = await navigator.xr.isSessionSupported("immersive-ar").catch(() => false);
-  if (!supported) { showNoXR(); return; }
-
-  const session = await navigator.xr.requestSession("immersive-ar", {
-    requiredFeatures: ["hit-test"],
-    optionalFeatures: ["dom-overlay", "anchors"],
-    domOverlay: { root: document.getElementById("ar-overlay") }
-  });
-
-  renderer.xr.setReferenceSpaceType("local");
-  await renderer.xr.setSession(session);
-
-  document.getElementById("btn-start-ar").style.display    = "none";
-  document.getElementById("ar-overlay").classList.add("active");
-
-  session.addEventListener("end", () => {
-    document.getElementById("btn-start-ar").style.display = "block";
-    document.getElementById("ar-overlay").classList.remove("active");
-    hitTestSource = null; hitTestSourceRequested = false;
-    document.getElementById("ar-sidebar").classList.remove("open");
-  });
-
-  // Lắng nghe "select" (tap màn hình khi AR)
-  const controller = renderer.xr.getController(0);
-  controller.addEventListener("select", () => {
-    if (currentMode === "place")  placeObject();
-    else                          selectObject();
-  });
-  scene.add(controller);
-
-  renderer.setAnimationLoop(onXRFrame);
-}
-
-function showNoXR() {
-  document.getElementById("no-xr").style.display = "flex";
-  document.getElementById("btn-start-ar").style.display = "none";
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  12. VÒNG LẶP RENDER (mỗi frame)
-// ═══════════════════════════════════════════════════════════════
-function onXRFrame(timestamp, frame) {
-  if (!frame) { renderer.render(scene, camera); return; }
-
-  const session  = renderer.xr.getSession();
-  const refSpace = renderer.xr.getReferenceSpace();
-
-  // Xin HitTestSource một lần
-  if (!hitTestSourceRequested && session) {
-    session.requestReferenceSpace("viewer").then(viewerSpace => {
-      session.requestHitTestSource({ space: viewerSpace }).then(src => {
-        hitTestSource = src;
-      }).catch(() => {});
-    });
-    hitTestSourceRequested = true;
-  }
-
-  // Cập nhật reticle theo kết quả hit test
-  if (hitTestSource && currentMode === "place") {
-    const results = frame.getHitTestResults(hitTestSource);
-    if (results.length > 0) {
-      const pose = results[0].getPose(refSpace);
-      reticle.visible = true;
-      reticle.matrix.fromArray(pose.transform.matrix);
-      // Cập nhật hint
-      document.getElementById("ar-hint").classList.add("hidden");
-    } else {
-      reticle.visible = false;
-    }
-  } else {
-    reticle.visible = false;
-  }
-
-  renderer.render(scene, camera);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  13. SIDEBAR & UI HELPERS
-// ═══════════════════════════════════════════════════════════════
-document.getElementById("btn-start-ar").addEventListener("click", startAR);
-document.getElementById("btn-open-sidebar").addEventListener("click", () => {
-  document.getElementById("ar-sidebar").classList.toggle("open");
-});
-document.getElementById("btn-close-sidebar").addEventListener("click", () => {
-  document.getElementById("ar-sidebar").classList.remove("open");
-});
-document.getElementById("btn-back-cat").addEventListener("click", window.renderCategories);
-
-// Toast
-window.showToast = function(msg, type = "") {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = "show " + type;
-  clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => { t.className = ""; }, 2800);
-};
-
-// Ẩn splash sau 2 giây
-setTimeout(() => { document.getElementById("splash").classList.add("hidden"); }, 2000);
-
-// Render tĩnh khi chưa vào AR
-renderer.setAnimationLoop(() => renderer.render(scene, camera));
-</script>
-
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let categoryDisplayNames = {}; 
+        let modelDatabase = {};        
+
+        const menuContent = document.getElementById('menu-content');
+        const menuTitle = document.getElementById('menu-title');
+        const backBtn = document.getElementById('back-btn');
+        const arViewer = document.getElementById('ar-viewer');
+        const sideMenu = document.getElementById('side-menu');
+
+        window.toggleMenu = function() {
+            sideMenu.classList.toggle('open');
+            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
+                renderCategories();
+            }
+        }
+
+        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
+        window.fetchFromFirebase = async function() {
+            try {
+                // Tải danh mục
+                const catSnapshot = await getDocs(collection(db, "categories"));
+                categoryDisplayNames = {};
+                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
+
+                // Tải vật thể
+                const modelSnapshot = await getDocs(collection(db, "models"));
+                modelDatabase = {}; 
+                let firstModelUrl = "";
+
+                modelSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const catCode = data.category || "khac"; 
+                    if (!modelDatabase[catCode]) modelDatabase[catCode] = [];
+
+                    modelDatabase[catCode].push({
+                        id: doc.id, 
+                        name: data.name || "Chưa tên",
+                        url: data.url,
+                        image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
+                    });
+                    if(!firstModelUrl) firstModelUrl = data.url;
+                });
+
+                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
+                renderCategories();
+
+            } catch (error) {
+                console.error("Lỗi:", error);
+                menuContent.innerHTML = '<p style="color: #ff2a4b;">Lỗi kết nối Firebase!</p>';
+            }
+        }
+
+        // VẼ DANH MỤC LÊN SIDEBAR
+        window.renderCategories = function() {
+            menuTitle.innerText = "Danh Mục Đồ Vật";
+            backBtn.style.display = 'none'; 
+            menuContent.innerHTML = ''; 
+
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const div = document.createElement('div');
+                div.className = 'category-item';
+                div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
+                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
+                menuContent.appendChild(div);
+            });
+        }
+
+        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
+        window.renderItems = function(catCode, displayName) {
+            menuTitle.innerText = displayName; 
+            backBtn.style.display = 'block'; 
+            menuContent.innerHTML = ''; 
+            
+            const items = modelDatabase[catCode] || [];
+            if(items.length === 0) { menuContent.innerHTML = "<p style='color:gray;'>Chưa có vật thể.</p>"; return; }
+
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'items-grid';
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteModel('${item.id}', event)">🗑️</button>
+                    <img src="${item.image}" class="model-img" loading="lazy">
+                    <div class="model-name">${item.name}</div>
+                `;
+
+                card.onclick = () => {
+                    arViewer.src = item.url;
+                    window.toggleMenu(); 
+                };
+
+                gridDiv.appendChild(card);
+            });
+            menuContent.appendChild(gridDiv);
+        }
+
+        // XÓA VẬT THỂ
+        window.deleteModel = async function(docId, event) {
+            event.stopPropagation(); 
+            const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
+            if (confirmDelete) {
+                try {
+                    await deleteDoc(doc(db, "models", docId)); 
+                    alert("Đã xóa thành công!");
+                    fetchFromFirebase(); 
+                } catch (error) {
+                    alert("Lỗi khi xóa: " + error.message);
+                }
+            }
+        }
+
+        // QUẢN LÝ MODAL (FORM)
+        window.openModal = function() {
+            const selectEl = document.getElementById('inp-category');
+            selectEl.innerHTML = ''; 
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const option = document.createElement('option');
+                option.value = catCode;
+                option.text = categoryDisplayNames[catCode];
+                selectEl.appendChild(option);
+            });
+            document.getElementById('admin-modal').style.display = 'flex';
+        }
+
+        window.closeModal = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
+            document.getElementById('btn-save').disabled = false;
+            document.getElementById('btn-save').style.background = "#00e5ff";
+        }
+
+        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
+        async function uploadFileToCloudinary(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+
+            const response = await fetch(CLOUDINARY_URL, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.secure_url) {
+                return data.secure_url;
+            } else {
+                throw new Error(data.error?.message || "Tải file thất bại");
+            }
+        }
+
+        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
+        window.submitNewModel = async function(event) {
+            event.preventDefault(); 
+            
+            const btnSave = document.getElementById('btn-save');
+            const imgFile = document.getElementById('inp-image-file').files[0];
+            const modelFile = document.getElementById('inp-model-file').files[0];
+
+            if(!imgFile || !modelFile) {
+                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
+                return;
+            }
+
+            // Khóa nút bấm và đổi hiệu ứng
+            btnSave.disabled = true;
+            btnSave.style.background = "#475569"; 
+
+            try {
+                // 1. Tải ảnh hiển thị
+                btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
+                const imageUrl = await uploadFileToCloudinary(imgFile);
+
+                // 2. Tải mô hình 3D (Đợi hơi lâu)
+                btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
+                const modelUrl = await uploadFileToCloudinary(modelFile);
+
+                // 3. Đẩy thông tin vào Firebase
+                btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
+                const newModel = {
+                    name: document.getElementById('inp-name').value,
+                    category: document.getElementById('inp-category').value,
+                    image: imageUrl,
+                    url: modelUrl
+                };
+
+                await addDoc(collection(db, "models"), newModel);
+                
+                alert("🎉 Đã thêm vật thể mới thành công!");
+                closeModal();
+                fetchFromFirebase(); 
+
+            } catch (error) {
+                console.error("Lỗi Upload:", error);
+                alert("🚨 Lỗi: " + error.message);
+                
+                // Mở khóa nút nếu bị lỗi
+                btnSave.innerText = "Thử lại";
+                btnSave.disabled = false;
+                btnSave.style.background = "#ff2a4b";
+            }
+        }
+
+        // BẮT ĐẦU CHẠY APP
+        fetchFromFirebase();
+    </script>
 </body>
 </html>
