@@ -1,219 +1,389 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>VKU AR - WebXR Demo</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>VKU AR - WebXR Multi-Placement Edition</title>
+    
+    <!-- CSS Tùy chỉnh cho không gian AR Toàn màn hình -->
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0b1426; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Giao diện UI Overlay đè lên Camera */
+        #ar-ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Cho phép chạm xuyên qua lớp này xuống 3D Canvas */
+            z-index: 10; display: flex; flex-direction: column; justify-content: space-between;
+        }
 
-<style>
-body { margin:0; overflow:hidden; font-family: sans-serif; background:#000; }
+        /* Header chứa tiêu đề và nút Thêm */
+        .ar-header {
+            background: linear-gradient(to bottom, rgba(11,20,38,0.9), transparent);
+            padding: 15px; display: flex; justify-content: space-between; align-items: center;
+            pointer-events: auto; /* Kích hoạt lại tương tác cho Header */
+        }
+        .ar-header h1 { margin: 0; color: #00e5ff; font-size: 1.2rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .btn-add-open { background: #00e5ff; color: #0b1426; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-/* canvas AR */
-canvas { position: fixed; top:0; left:0; width:100%; height:100%; }
+        /* Menu ngang (Carousel) ở dưới đáy */
+        .bottom-carousel {
+            background: rgba(11, 20, 38, 0.85); backdrop-filter: blur(10px);
+            padding: 15px; overflow-x: auto; white-space: nowrap;
+            pointer-events: auto; display: none; /* Sẽ hiện khi có dữ liệu */
+            border-top: 1px solid rgba(0, 229, 255, 0.3);
+        }
+        .bottom-carousel::-webkit-scrollbar { height: 6px; }
+        .bottom-carousel::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 10px; }
 
-/* nút start */
-#start-ar {
-  position: fixed; bottom: 20px; left:50%;
-  transform: translateX(-50%);
-  padding: 12px 20px;
-  background: #00e5ff; border:none;
-  border-radius: 10px;
-  font-weight: bold;
-  z-index: 10;
-}
+        .item-card {
+            display: inline-block; width: 80px; margin-right: 15px;
+            background: rgba(255,255,255,0.05); border: 2px solid transparent;
+            border-radius: 10px; overflow: hidden; cursor: pointer; text-align: center;
+            transition: 0.3s;
+        }
+        .item-card.active { border-color: #00e5ff; transform: scale(1.05); box-shadow: 0 0 10px rgba(0,229,255,0.5); }
+        .item-img { width: 100%; height: 60px; object-fit: cover; background: #fff; }
+        .item-name { padding: 5px; color: white; font-size: 10px; font-weight: bold; white-space: normal; line-height: 1.2; }
 
-/* menu */
-#side-menu {
-  position: fixed;
-  left: -100%;
-  top:0;
-  width: 280px;
-  height:100%;
-  background: rgba(0,0,0,0.9);
-  transition: 0.3s;
-  padding: 15px;
-  overflow-y: auto;
-  z-index: 20;
-}
-#side-menu.open { left:0; }
+        /* Nút Start AR của Three.js */
+        #ARButton { bottom: 150px !important; background-color: #00e5ff !important; color: #0b1426 !important; font-weight: bold; border-radius: 20px !important; }
 
-.model {
-  background:#111;
-  margin-bottom:10px;
-  padding:10px;
-  color:#fff;
-  border-radius:8px;
-  cursor:pointer;
-}
-.model:hover { background:#00e5ff; color:#000; }
+        /* --- MODAL ADMIN (Giữ nguyên cấu trúc cũ) --- */
+        #admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #122343; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px;
+            color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
+        .form-group input[type="text"], .form-group select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3); color: white; box-sizing: border-box;
+        }
+        .form-group input[type="file"] { width: 100%; padding: 8px; font-size: 13px; color: #94a3b8; background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
+        .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
+        
+        #loading-indicator {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #00e5ff; font-weight: bold; display: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
 
-#status {
-  position: fixed;
-  top:20px;
-  left:50%;
-  transform: translateX(-50%);
-  color:white;
-  background: rgba(0,0,0,0.6);
-  padding:8px 12px;
-  border-radius:8px;
-  z-index:10;
-}
-</style>
+    <!-- Importmap cho Three.js -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
-
 <body>
 
-<div id="status">Nhấn Start AR</div>
-<button id="start-ar">🚀 Start AR</button>
+    <!-- LỚP GIAO DIỆN CHỒNG LÊN CANVAS (UI OVERLAY) -->
+    <div id="ar-ui-layer">
+        <div class="ar-header">
+            <h1>VKU AR <span style="font-size:12px; color:#94a3b8">WebXR</span></h1>
+            <button class="btn-add-open" onclick="openModal()">+ Data</button>
+        </div>
 
-<div id="side-menu"></div>
+        <div id="loading-indicator">Đang tải Model...</div>
 
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/GLTFLoader.js';
+        <!-- Dải trượt Menu dưới đáy -->
+        <div class="bottom-carousel" id="item-carousel">
+            <!-- Đồ vật từ Firebase sẽ được render vào đây -->
+        </div>
+    </div>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    <!-- MODAL THÊM DỮ LIỆU -->
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: #00e5ff; text-align: center;">Thêm Vật Thể Mới</h3>
+            <form id="add-form">
+                <div class="form-group">
+                    <label>Tên hiển thị:</label>
+                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
+                </div>
+                <div class="form-group">
+                    <label>Danh mục:</label>
+                    <input type="text" id="inp-category" required value="Noithat">
+                </div>
+                <div class="form-group">
+                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
+                    <input type="file" id="inp-image-file" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Chọn File 3D (.glb):</label>
+                    <input type="file" id="inp-model-file" accept=".glb" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-/* ================= FIREBASE ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
-};
+    <!-- SCRIPT CHÍNH: QUẢN LÝ DATABASE & THREE.JS WEBXR -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+        // ==========================================
+        // 1. CẤU HÌNH CLOUDINARY & FIREBASE
+        // ==========================================
+        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+        const CLOUDINARY_PRESET = "vku_ar_preset";
 
-/* ================= THREE + XR ================= */
-let scene, camera, renderer;
-let controller, reticle;
-let hitTestSource = null;
-let localSpace = null;
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+            authDomain: "vku-ar-project.firebaseapp.com",
+            projectId: "vku-ar-project",
+            storageBucket: "vku-ar-project.firebasestorage.app",
+            messagingSenderId: "595437202444",
+            appId: "1:595437202444:web:7939802383d326eee75229",
+            measurementId: "G-QS4HC8MPGT"
+        };
 
-let currentModelUrl = null;
-let isSurfaceDetected = false;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-const loader = new GLTFLoader();
+        // Biến toàn cục quản lý AR
+        let currentSelectedModelUrl = null;
+        let allModels = [];
 
-init();
+        // ==========================================
+        // 2. KHỞI TẠO THREE.JS & WEBXR ENGINE
+        // ==========================================
+        let camera, scene, renderer;
+        let controller, reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+        
+        const gltfLoader = new GLTFLoader();
 
-function init() {
-  scene = new THREE.Scene();
+        initThreeJS();
+        animate();
 
-  camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+        function initThreeJS() {
+            const container = document.createElement('div');
+            document.body.appendChild(container);
 
-  renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
+            scene = new THREE.Scene();
 
-  document.body.appendChild(renderer.domElement);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-  // ánh sáng
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
+            // Ánh sáng cơ bản
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
+            light.position.set(0.5, 1, 0.25);
+            scene.add(light);
 
-  // controller
-  controller = renderer.xr.getController(0);
-  controller.addEventListener('select', onSelect);
-  scene.add(controller);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true; // Kích hoạt WebXR
+            container.appendChild(renderer.domElement);
 
-  // reticle
-  const geo = new THREE.RingGeometry(0.1, 0.15, 32);
-  const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-  reticle = new THREE.Mesh(geo, mat);
-  reticle.rotation.x = -Math.PI / 2;
-  reticle.visible = false;
-  scene.add(reticle);
+            // Thêm nút AR vào Body (Yêu cầu tính năng hit-test)
+            document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-  document.getElementById("start-ar").onclick = startAR;
-}
+            // Xử lý sự kiện "Chạm để đặt"
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect);
+            scene.add(controller);
 
-/* ================= START AR ================= */
-async function startAR() {
-  const session = await navigator.xr.requestSession('immersive-ar', {
-    requiredFeatures: ['hit-test']
-  });
+            // Tạo Reticle (Vòng tròn ngắm trên mặt phẳng)
+            const reticleGeometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const reticleMaterial = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+            reticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
 
-  renderer.xr.setSession(session);
+            window.addEventListener('resize', onWindowResize);
+        }
 
-  const viewerSpace = await session.requestReferenceSpace('viewer');
-  localSpace = await session.requestReferenceSpace('local');
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-  hitTestSource = await session.requestHitTestSource({
-    space: viewerSpace
-  });
+        // --- Hàm xử lý khi người dùng chạm vào màn hình ---
+        function onSelect() {
+            if (reticle.visible && currentSelectedModelUrl) {
+                const loadingTxt = document.getElementById('loading-indicator');
+                loadingTxt.style.display = 'block';
 
-  renderer.setAnimationLoop(render);
+                gltfLoader.load(currentSelectedModelUrl, function (gltf) {
+                    const model = gltf.scene;
+                    // Lấy vị trí từ vòng ngắm Reticle
+                    model.position.setFromMatrixPosition(reticle.matrix);
+                    
+                    // (Tùy chọn) Tính toán để vật thể luôn hướng về phía Camera
+                    const camPos = new THREE.Vector3();
+                    camera.getWorldPosition(camPos);
+                    camPos.y = model.position.y; // Giữ nguyên độ cao
+                    model.lookAt(camPos);
 
-  document.getElementById("start-ar").style.display = "none";
-  document.getElementById("status").innerText = "Di chuyển để quét mặt phẳng...";
-}
+                    scene.add(model);
+                    loadingTxt.style.display = 'none';
+                }, undefined, function (error) {
+                    console.error("Lỗi khi load 3D model:", error);
+                    loadingTxt.style.display = 'none';
+                });
+            } else if (!currentSelectedModelUrl) {
+                alert("Vui lòng chọn một đồ vật từ Menu bên dưới trước khi đặt.");
+            }
+        }
 
-/* ================= RENDER ================= */
-function render(timestamp, frame) {
-  if (frame && hitTestSource) {
-    const hits = frame.getHitTestResults(hitTestSource);
+        // --- Vòng lặp render liên tục của WebXR ---
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
 
-    if (hits.length > 0) {
-      const hit = hits[0];
-      const pose = hit.getPose(localSpace);
+        function render(timestamp, frame) {
+            if (frame) {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
 
-      reticle.visible = true;
-      reticle.matrix.fromArray(pose.transform.matrix);
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
+                            hitTestSource = source;
+                        });
+                    });
+                    session.addEventListener('end', function () {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                        reticle.visible = false;
+                    });
+                    hitTestSourceRequested = true;
+                }
 
-      if (!isSurfaceDetected) {
-        isSurfaceDetected = true;
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        const pose = hit.getPose(referenceSpace);
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(pose.transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+            }
+            renderer.render(scene, camera);
+        }
 
-        document.getElementById("status").innerText = "Chọn vật thể để đặt";
-        document.getElementById("side-menu").classList.add("open");
+        // ==========================================
+        // 3. LOGIC UI, FIREBASE & DATA
+        // ==========================================
+        const carousel = document.getElementById('item-carousel');
 
-        loadMenu();
-      }
+        async function fetchModels() {
+            carousel.innerHTML = '<span style="color:white">Đang tải dữ liệu...</span>';
+            carousel.style.display = 'block';
+            try {
+                const querySnapshot = await getDocs(collection(db, "models"));
+                allModels = [];
+                carousel.innerHTML = ''; // Clear
 
-    } else {
-      reticle.visible = false;
-    }
-  }
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allModels.push({ id: doc.id, ...data });
 
-  renderer.render(scene, camera);
-}
+                    const div = document.createElement('div');
+                    div.className = 'item-card';
+                    div.innerHTML = `
+                        <img src="${data.image}" class="item-img">
+                        <div class="item-name">${data.name || 'No Name'}</div>
+                    `;
+                    div.onclick = () => selectItem(div, data.url);
+                    carousel.appendChild(div);
+                });
 
-/* ================= ĐẶT OBJECT ================= */
-function onSelect() {
-  if (!reticle.visible || !currentModelUrl) return;
+                if(allModels.length > 0) {
+                    // Mặc định chọn item đầu tiên
+                    selectItem(carousel.firstChild, allModels[0].url);
+                }
+            } catch (e) {
+                console.error("Lỗi lấy dữ liệu:", e);
+                carousel.innerHTML = '<span style="color:red">Lỗi tải dữ liệu.</span>';
+            }
+        }
 
-  loader.load(currentModelUrl, (gltf) => {
-    const model = gltf.scene.clone();
+        function selectItem(element, url) {
+            // Cập nhật UI
+            document.querySelectorAll('.item-card').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            
+            // Set model được chọn cho Three.js
+            currentSelectedModelUrl = url;
+        }
 
-    model.position.setFromMatrixPosition(reticle.matrix);
-    model.scale.set(0.3,0.3,0.3);
+        // Modal Management (Gắn vào Window để HTML có thể gọi)
+        window.openModal = function() { document.getElementById('admin-modal').style.display = 'flex'; }
+        window.closeModal = function() { 
+            document.getElementById('admin-modal').style.display = 'none'; 
+            document.getElementById('add-form').reset();
+        }
 
-    scene.add(model);
-  });
-}
+        // Upload Logic
+        document.getElementById('add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSave = document.getElementById('btn-save');
+            const imgFile = document.getElementById('inp-image-file').files[0];
+            const modelFile = document.getElementById('inp-model-file').files[0];
 
-/* ================= LOAD MENU ================= */
-async function loadMenu() {
-  const snapshot = await getDocs(collection(db, "models"));
-  const menu = document.getElementById("side-menu");
+            btnSave.disabled = true;
+            btnSave.innerText = "⏳ Đang xử lý...";
 
-  menu.innerHTML = "<h3 style='color:white'>Chọn vật thể</h3>";
+            try {
+                // Upload to Cloudinary
+                const imgData = new FormData();
+                imgData.append('file', imgFile);
+                imgData.append('upload_preset', CLOUDINARY_PRESET);
+                const imgRes = await fetch(CLOUDINARY_URL, { method: 'POST', body: imgData }).then(r => r.json());
 
-  snapshot.forEach(doc => {
-    const data = doc.data();
+                const modData = new FormData();
+                modData.append('file', modelFile);
+                modData.append('upload_preset', CLOUDINARY_PRESET);
+                const modRes = await fetch(CLOUDINARY_URL, { method: 'POST', body: modData }).then(r => r.json());
 
-    const div = document.createElement("div");
-    div.className = "model";
-    div.innerText = data.name;
+                // Save to Firebase
+                await addDoc(collection(db, "models"), {
+                    name: document.getElementById('inp-name').value,
+                    category: document.getElementById('inp-category').value,
+                    image: imgRes.secure_url,
+                    url: modRes.secure_url
+                });
 
-    div.onclick = () => {
-      currentModelUrl = data.url;
-    };
+                alert("Thêm thành công!");
+                window.closeModal();
+                fetchModels(); // Refresh Carousel
+            } catch (error) {
+                alert("Lỗi: " + error.message);
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = "Tải Lên & Lưu";
+            }
+        });
 
-    menu.appendChild(div);
-  });
-}
-</script>
-
+        // Khởi động lấy dữ liệu
+        fetchModels();
+    </script>
 </body>
 </html>
