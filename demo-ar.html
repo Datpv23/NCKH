@@ -3,10 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VKU AR - Full CMS & Cloudinary Edition</title>
+    <title>VKU AR - Full CMS & WebXR Edition</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
 
     <style>
         /* --- TÙY CHỈNH KHU VỰC AR --- */
@@ -82,10 +90,36 @@
         .btn-cancel { flex: 1; padding: 10px; background: #475569; color: white; border: none; border-radius: 8px; cursor: pointer;}
         .btn-submit { flex: 1; padding: 10px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;}
         .btn-submit:disabled { cursor: not-allowed; opacity: 0.8; }
+
+        /* --- THREE.JS CONTAINER --- */
+        #container-3d {
+            width: 100%; height: 60vh; border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #0b1426, #122343); position: relative;
+        }
+        
+        /* Ghi đè CSS nút AR mặc định của ThreeJS */
+        #ARButton {
+            bottom: 20px !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            background-color: #00e5ff !important;
+            color: #0b1426 !important;
+            font-weight: bold !important;
+            font-family: inherit !important;
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(0,229,255,0.4) !important;
+            z-index: 10 !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            margin-left: 0 !important;
+        }
+        
+        #placement-indicator {
+            position:absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: #fff; border: 1px solid #00e5ff; padding: 8px 15px; border-radius: 8px; font-size: 13px; font-weight: bold; z-index: 5; display: none; backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body>
-    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR CAMERA...</div></div>
+    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">INITIALIZING AR ENGINE...</div></div>
     <vku-header></vku-header>
 
     <main>
@@ -93,12 +127,13 @@
         <div style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); padding: 15px 25px; border-radius: 12px; text-align: center;">
             <p style="color: var(--vku-gold); margin: 0; font-size: 15px">
                 <strong><span style="font-size: 18px">⚠️</span> PROTOCOL:</strong>
-                Mở <strong>Menu</strong> để chọn vật thể hoặc Thêm/Xóa dữ liệu. Nhấn <strong>Khởi động Hologram</strong> để quét sàn.
+                Mở <strong>Menu</strong> để chọn vật thể. Bấm <strong>Start AR</strong>, quét sàn nhà cho tới khi thấy vòng tròn, <strong>Chạm màn hình</strong> để đặt nhiều vật thể tạo thành phòng.
             </p>
         </div>
 
         <div class="ar-container">
             <button class="menu-toggle-btn" onclick="toggleMenu()">☰ Menu Đồ Vật</button>
+            <div id="placement-indicator">Vật đang chọn: <span id="current-model-name" style="color:#00e5ff;">Chưa có</span></div>
 
             <div id="side-menu" class="side-menu">
                 <div class="menu-header">
@@ -112,12 +147,7 @@
                 </div>
             </div>
             
-            <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" camera-controls shadow-intensity="1.5" environment-image="neutral" style="width: 100%; height: 60vh; border-radius: 16px;">
-                <button slot="ar-button" class="ar-button">
-                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                    Khởi động Hologram
-                </button>
-            </model-viewer>
+            <div id="container-3d"></div>
         </div>
     </main>
 
@@ -150,59 +180,185 @@
     </div>
 
     <script type="module">
+        // Firebase Setup
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        // Three.js Setup
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // ==========================================
-        // 1. CẤU HÌNH CLOUDINARY (Của bạn)
+        // 1. CLOUDINARY & FIREBASE CONFIG
         // ==========================================
         const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
-        const CLOUDINARY_PRESET = "vku_ar_preset"; // Preset Upload không cần chữ ký
+        const CLOUDINARY_PRESET = "vku_ar_preset"; 
 
-        // ==========================================
-        // 2. CẤU HÌNH FIREBASE (DÁN MÃ CỦA BẠN VÀO ĐÂY)
-        // ==========================================
         const firebaseConfig = {
-  apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-  authDomain: "vku-ar-project.firebaseapp.com",
-  projectId: "vku-ar-project",
-  storageBucket: "vku-ar-project.firebasestorage.app",
-  messagingSenderId: "595437202444",
-  appId: "1:595437202444:web:7939802383d326eee75229",
-  measurementId: "G-QS4HC8MPGT"
-};
-
+            apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+            authDomain: "vku-ar-project.firebaseapp.com",
+            projectId: "vku-ar-project",
+            storageBucket: "vku-ar-project.firebasestorage.app",
+            messagingSenderId: "595437202444",
+            appId: "1:595437202444:web:7939802383d326eee75229",
+            measurementId: "G-QS4HC8MPGT"
+        };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // ==========================================
+        // 2. THREE.JS & WEBXR LOGIC
+        // ==========================================
+        let camera, scene, renderer;
+        let controller, reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+        
+        let currentLoadedModel = null; // Vật thể đã được tải để đặt
+        let previewGroup; // Nhóm chứa vật thể xem trước (khi chưa vô AR)
+        const gltfLoader = new GLTFLoader();
+
+        initThreeJS();
+
+        function initThreeJS() {
+            const container = document.getElementById('container-3d');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.01, 20);
+            
+            // Ánh sáng cho mô hình sáng đẹp
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            hemiLight.position.set(0.5, 1, 0.25);
+            scene.add(hemiLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(0, 2, 0);
+            scene.add(dirLight);
+
+            // Group xem trước 3D (xoay xoay)
+            previewGroup = new THREE.Group();
+            scene.add(previewGroup);
+            camera.position.set(0, 1, 3); // Góc camera khi chưa vào AR
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Thêm nút AR
+            const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
+            container.appendChild(arButton);
+
+            // Sự kiện WebXR
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect); // Chạm để đặt
+            scene.add(controller);
+
+            // Vòng tròn định vị mặt phẳng (Reticle)
+            const geometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const material = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+            reticle = new THREE.Mesh(geometry, material);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+
+            // Ẩn preview khi vào AR
+            renderer.xr.addEventListener('sessionstart', () => { previewGroup.visible = false; });
+            renderer.xr.addEventListener('sessionend', () => { previewGroup.visible = true; });
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.setAnimationLoop(animate);
+            
+            // Ẩn splash screen sau khi khởi tạo
+            const splash = document.getElementById('splash-screen');
+            if(splash) splash.style.display = 'none';
+        }
+
+        // HÀM CHẠM MÀN HÌNH ĐỂ ĐẶT VẬT THỂ
+        function onSelect() {
+            if (reticle.visible && currentLoadedModel) {
+                const clone = currentLoadedModel.clone();
+                clone.position.setFromMatrixPosition(reticle.matrix);
+                // Tạo hướng xoay ngẫu nhiên chút cho tự nhiên hoặc hướng về camera
+                scene.add(clone);
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('container-3d');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate(timestamp, frame) {
+            // Xoay preview khi chưa vào AR
+            if (!renderer.xr.isPresenting) {
+                previewGroup.rotation.y += 0.01;
+            }
+
+            // WebXR Hit Test Logic
+            if (frame) {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
+                            hitTestSource = source;
+                        });
+                    });
+                    session.addEventListener('end', function () {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                    });
+                    hitTestSourceRequested = true;
+                }
+
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 3. UI & FIREBASE LOGIC
+        // ==========================================
         let categoryDisplayNames = {}; 
         let modelDatabase = {};        
 
         const menuContent = document.getElementById('menu-content');
         const menuTitle = document.getElementById('menu-title');
         const backBtn = document.getElementById('back-btn');
-        const arViewer = document.getElementById('ar-viewer');
         const sideMenu = document.getElementById('side-menu');
 
         window.toggleMenu = function() {
             sideMenu.classList.toggle('open');
             if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && !backBtn.style.display.includes('block')) {
-                renderCategories();
+                window.renderCategories();
             }
         }
 
-        // HÀM TẢI DỮ LIỆU TỪ FIREBASE
         window.fetchFromFirebase = async function() {
             try {
-                // Tải danh mục
                 const catSnapshot = await getDocs(collection(db, "categories"));
                 categoryDisplayNames = {};
                 catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
 
-                // Tải vật thể
                 const modelSnapshot = await getDocs(collection(db, "models"));
                 modelDatabase = {}; 
                 let firstModelUrl = "";
+                let firstModelName = "";
 
                 modelSnapshot.forEach((doc) => {
                     const data = doc.data();
@@ -215,11 +371,13 @@
                         url: data.url,
                         image: data.image || "https://placehold.co/200x150/e2e8f0/1e293b?text=No+Image"
                     });
-                    if(!firstModelUrl) firstModelUrl = data.url;
+                    if(!firstModelUrl) { firstModelUrl = data.url; firstModelName = data.name; }
                 });
 
-                if(firstModelUrl && !arViewer.src) arViewer.src = firstModelUrl;
-                renderCategories();
+                if(firstModelUrl && !currentLoadedModel) {
+                    window.loadModelToScene(firstModelUrl, firstModelName);
+                }
+                window.renderCategories();
 
             } catch (error) {
                 console.error("Lỗi:", error);
@@ -227,7 +385,6 @@
             }
         }
 
-        // VẼ DANH MỤC LÊN SIDEBAR
         window.renderCategories = function() {
             menuTitle.innerText = "Danh Mục Đồ Vật";
             backBtn.style.display = 'none'; 
@@ -237,12 +394,11 @@
                 const div = document.createElement('div');
                 div.className = 'category-item';
                 div.innerHTML = `<span>${categoryDisplayNames[catCode]}</span> <span>❯</span>`;
-                div.onclick = () => renderItems(catCode, categoryDisplayNames[catCode]);
+                div.onclick = () => window.renderItems(catCode, categoryDisplayNames[catCode]);
                 menuContent.appendChild(div);
             });
         }
 
-        // VẼ DANH SÁCH VẬT THỂ & NÚT XÓA
         window.renderItems = function(catCode, displayName) {
             menuTitle.innerText = displayName; 
             backBtn.style.display = 'block'; 
@@ -263,8 +419,9 @@
                     <div class="model-name">${item.name}</div>
                 `;
 
+                // KHI CHỌN VẬT THỂ TỪ MENU -> LOAD VÀO SCENE
                 card.onclick = () => {
-                    arViewer.src = item.url;
+                    window.loadModelToScene(item.url, item.name);
                     window.toggleMenu(); 
                 };
 
@@ -273,7 +430,42 @@
             menuContent.appendChild(gridDiv);
         }
 
-        // XÓA VẬT THỂ
+        // HÀM TẢI MODEL VÀO TRONG BỘ NHỚ ĐỂ CHUẨN BỊ ĐẶT
+        window.loadModelToScene = function(url, name) {
+            document.getElementById('placement-indicator').style.display = 'block';
+            document.getElementById('current-model-name').innerText = "Đang tải...";
+            document.getElementById('current-model-name').style.color = "#ffeb3b";
+
+            gltfLoader.load(url, function (gltf) {
+                currentLoadedModel = gltf.scene;
+
+                // Chuẩn bị Preview
+                while(previewGroup.children.length > 0){ 
+                    previewGroup.remove(previewGroup.children[0]); 
+                }
+                const previewModel = currentLoadedModel.clone();
+                
+                // Căn giữa model xem trước
+                const box = new THREE.Box3().setFromObject(previewModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                previewModel.position.sub(center); // Đưa về gốc tọa độ
+                
+                // Thu nhỏ nếu vật thể quá to so với camera preview
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if(maxDim > 2) previewModel.scale.setScalar(2 / maxDim);
+                
+                previewGroup.add(previewModel);
+
+                document.getElementById('current-model-name').innerText = name;
+                document.getElementById('current-model-name').style.color = "#00e5ff";
+            }, undefined, function (error) {
+                console.error(error);
+                document.getElementById('current-model-name').innerText = "Lỗi tải file!";
+                document.getElementById('current-model-name').style.color = "red";
+            });
+        }
+
         window.deleteModel = async function(docId, event) {
             event.stopPropagation(); 
             const confirmDelete = confirm("Bạn có chắc chắn muốn xóa vật thể này khỏi hệ thống?");
@@ -281,10 +473,8 @@
                 try {
                     await deleteDoc(doc(db, "models", docId)); 
                     alert("Đã xóa thành công!");
-                    fetchFromFirebase(); 
-                } catch (error) {
-                    alert("Lỗi khi xóa: " + error.message);
-                }
+                    window.fetchFromFirebase(); 
+                } catch (error) { alert("Lỗi khi xóa: " + error.message); }
             }
         }
 
@@ -309,52 +499,33 @@
             document.getElementById('btn-save').style.background = "#00e5ff";
         }
 
-        // HÀM HELPER: CHỊU TRÁCH NHIỆM ĐẨY 1 FILE LÊN CLOUDINARY
         async function uploadFileToCloudinary(file) {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_PRESET);
-
-            const response = await fetch(CLOUDINARY_URL, {
-                method: 'POST',
-                body: formData
-            });
-            
+            const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
             const data = await response.json();
-            if (data.secure_url) {
-                return data.secure_url;
-            } else {
-                throw new Error(data.error?.message || "Tải file thất bại");
-            }
+            if (data.secure_url) return data.secure_url;
+            else throw new Error(data.error?.message || "Tải file thất bại");
         }
 
-        // XỬ LÝ SUBMIT: TẢI FILE LÊN CLOUDINARY -> LẤY LINK -> LƯU FIREBASE
         window.submitNewModel = async function(event) {
             event.preventDefault(); 
-            
             const btnSave = document.getElementById('btn-save');
             const imgFile = document.getElementById('inp-image-file').files[0];
             const modelFile = document.getElementById('inp-model-file').files[0];
 
-            if(!imgFile || !modelFile) {
-                alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
-                return;
-            }
+            if(!imgFile || !modelFile) { alert("Vui lòng chọn đầy đủ Ảnh và File 3D!"); return; }
 
-            // Khóa nút bấm và đổi hiệu ứng
-            btnSave.disabled = true;
-            btnSave.style.background = "#475569"; 
+            btnSave.disabled = true; btnSave.style.background = "#475569"; 
 
             try {
-                // 1. Tải ảnh hiển thị
                 btnSave.innerText = "⏳ Đang tải ảnh lên Cloudinary...";
                 const imageUrl = await uploadFileToCloudinary(imgFile);
 
-                // 2. Tải mô hình 3D (Đợi hơi lâu)
                 btnSave.innerText = "⏳ Đang tải mô hình 3D (Vui lòng chờ)...";
                 const modelUrl = await uploadFileToCloudinary(modelFile);
 
-                // 3. Đẩy thông tin vào Firebase
                 btnSave.innerText = "⏳ Đang đồng bộ với Firebase...";
                 const newModel = {
                     name: document.getElementById('inp-name').value,
@@ -364,24 +535,19 @@
                 };
 
                 await addDoc(collection(db, "models"), newModel);
-                
                 alert("🎉 Đã thêm vật thể mới thành công!");
-                closeModal();
-                fetchFromFirebase(); 
-
+                window.closeModal();
+                window.fetchFromFirebase(); 
             } catch (error) {
                 console.error("Lỗi Upload:", error);
                 alert("🚨 Lỗi: " + error.message);
-                
-                // Mở khóa nút nếu bị lỗi
                 btnSave.innerText = "Thử lại";
-                btnSave.disabled = false;
-                btnSave.style.background = "#ff2a4b";
+                btnSave.disabled = false; btnSave.style.background = "#ff2a4b";
             }
         }
 
-        // BẮT ĐẦU CHẠY APP
-        fetchFromFirebase();
+        // CHẠY APP
+        window.fetchFromFirebase();
     </script>
 </body>
 </html>
