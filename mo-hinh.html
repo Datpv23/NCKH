@@ -3,92 +3,281 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mô hình 3D - VKU AR DrawRoom</title>
+    <title>Mô hình 3D - VKU AR Database</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
-    <script
-      type="module"
-      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
-    ></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+    <style>
+        /* --- NÚT BẤM --- */
+        .add-btn { background: #00e5ff; color: #0b1426; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,229,255,0.3); }
+        .add-btn:hover { transform: translateY(-2px); background: #00cfea; }
+        
+        .delete-btn { background: rgba(200, 16, 46, 0.9); color: white; border: none; border-radius: 8px; padding: 8px 15px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-left: 15px; vertical-align: middle;}
+        .delete-btn:hover { background: red; transform: scale(1.05); }
+
+        /* --- MODAL THÊM VẬT THỂ --- */
+        #admin-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-content { background: #122343; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; color: white; border: 1px solid #00e5ff; box-shadow: 0 10px 40px rgba(0,229,255,0.2); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; margin-bottom: 5px; color: #94a3b8; font-weight: 600;}
+        .form-group input[type="text"], .form-group select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; box-sizing: border-box; font-size: 14px;}
+        .form-group input[type="file"] { width: 100%; padding: 10px; font-size: 13px; color: #94a3b8; background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px; box-sizing: border-box;}
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-cancel { flex: 1; padding: 12px; background: #475569; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .btn-cancel:hover { background: #334155; }
+        .btn-submit { flex: 1; padding: 12px; background: #00e5ff; color: #0b1426; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s;}
+        .btn-submit:disabled { cursor: not-allowed; opacity: 0.7; background: #94a3b8; color: #fff;}
+
+        /* --- CONTAINER MÔ HÌNH --- */
+        .ar-container { position: relative; max-width: 1000px; margin: 15px auto 50px auto; border-radius: 16px; overflow: hidden; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); }
+        model-viewer { width: 100%; height: 500px; outline: none; }
+    </style>
   </head>
   <body>
     <div id="splash-screen">
       <div class="loader-core"></div>
-      <div class="loader-text">LOADING 3D ASSETS...</div>
+      <div class="loader-text">LOADING 3D DATABASE...</div>
     </div>
 
     <vku-header></vku-header>
 
     <main>
-      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem">
+      <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem; margin-bottom: 10px;">
         Cơ Sở Dữ Liệu 3D
       </h1>
-      <p
-        style="
-          text-align: center;
-          color: var(--text-muted);
-          max-width: 600px;
-          margin: 0 auto 30px auto;
-        "
-      >
-        Hệ thống phân tích không gian 360 độ. Vui lòng sử dụng thao tác
-        cuộn/chạm để tương tác với mô hình đa chiều.
+      <p style="text-align: center; color: var(--text-muted); max-width: 600px; margin: 0 auto 20px auto;">
+        Hệ thống quản trị và phân tích không gian 360 độ. Mọi dữ liệu được đồng bộ trực tiếp từ Cloud.
       </p>
 
-      <h2 style="text-align: center; color: var(--vku-gold); font-size: 1.5rem">
-        [01] Không Gian Phòng Thực Hành VKU
-      </h2>
-      <div
-        class="ar-container"
-        style="max-width: 1000px; margin: 15px auto 50px auto"
-      >
-        <model-viewer
-          src="models/phong_hoc_ve.glb"
-          camera-controls
-          auto-rotate
-          rotation-per-second="30deg"
-          shadow-intensity="1"
-          environment-image="neutral"
-        >
-        </model-viewer>
+      <!-- Nút Thêm Mới -->
+      <div style="text-align: center; margin-bottom: 40px;">
+          <button class="add-btn" onclick="openModal()">➕ Thêm Thực Thể Mới Lên Mây</button>
       </div>
 
-      <h2 style="text-align: center; color: var(--vku-red); font-size: 1.5rem">
-        [02] Thực thể Demo: Elemental Thunderbird
-      </h2>
-      <div
-        class="ar-container"
-        style="max-width: 1000px; margin: 15px auto 30px auto"
-      >
-        <model-viewer
-          src="models/Meshy_AI_Elemental_Thunderbird_0314181252_texture.glb"
-          camera-controls
-          auto-rotate
-          rotation-per-second="30deg"
-          shadow-intensity="2"
-          environment-image="neutral"
-        >
-        </model-viewer>
-      </div>
-       <h2 style="text-align: center; color: var(--vku-red); font-size: 1.5rem">
-        [003 Thực thể Demo: Elemental Thunderbird
-      </h2>
-      <div
-        class="ar-container"
-        style="max-width: 1000px; margin: 15px auto 30px auto"
-      >
-        <model-viewer
-          src="models/Meshy_AI__0314185138_texture.glb"
-          camera-controls
-          auto-rotate
-          rotation-per-second="30deg"
-          shadow-intensity="2"
-          environment-image="neutral"
-        >
-        </model-viewer>
+      <!-- Vùng chứa danh sách Mô hình 3D load từ Firebase -->
+      <div id="dynamic-models-container">
+          <p style="text-align: center; color: #00e5ff;">⏳ Đang đồng bộ dữ liệu từ Firebase...</p>
       </div>
     </main>
 
     <vku-footer></vku-footer>
+
+    <!-- MODAL THÊM VẬT THỂ -->
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: #00e5ff; text-align: center; font-size: 1.5rem;">Thêm Thực Thể Mới</h3>
+            <form id="add-form" onsubmit="submitNewModel(event)">
+                <div class="form-group">
+                    <label>Tên hiển thị:</label>
+                    <input type="text" id="inp-name" required placeholder="VD: Bàn học gỗ">
+                </div>
+                <div class="form-group">
+                    <label>Danh mục (Đồng bộ Firebase):</label>
+                    <select id="inp-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Chọn Ảnh hiển thị (.png, .jpg):</label>
+                    <input type="file" id="inp-image-file" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Chọn File 3D (.glb):</label>
+                    <input type="file" id="inp-model-file" accept=".glb" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy Bỏ</button>
+                    <button type="submit" class="btn-submit" id="btn-save">Tải Lên & Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT XỬ LÝ FIREBASE & CMS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ==========================================
+        // 1. CẤU HÌNH API
+        // ==========================================
+        const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
+        const CLOUDINARY_PRESET = "vku_ar_preset"; 
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+            authDomain: "vku-ar-project.firebaseapp.com",
+            projectId: "vku-ar-project",
+            storageBucket: "vku-ar-project.firebasestorage.app",
+            messagingSenderId: "595437202444",
+            appId: "1:595437202444:web:7939802383d326eee75229",
+            measurementId: "G-QS4HC8MPGT"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let categoryDisplayNames = {}; 
+        let modelDatabase = []; // Chuyển thành dạng mảng dẹt để in ra trang dễ hơn
+        
+        // ==========================================
+        // 2. HÀM TẢI & HIỂN THỊ DỮ LIỆU
+        // ==========================================
+        window.fetchFromFirebase = async function() {
+            try {
+                // Tải danh mục (Dùng cho thẻ Select lúc thêm mới)
+                const catSnapshot = await getDocs(collection(db, "categories"));
+                categoryDisplayNames = {};
+                catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
+
+                // Tải vật thể
+                const modelSnapshot = await getDocs(collection(db, "models"));
+                modelDatabase = []; 
+                
+                modelSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    modelDatabase.push({
+                        id: doc.id, 
+                        name: data.name || "Thực thể chưa tên",
+                        url: data.url,
+                        image: data.image || "https://placehold.co/800x600/1e293b/94a3b8?text=No+Preview"
+                    });
+                });
+
+                renderModelsToPage();
+            } catch (error) {
+                console.error("Lỗi Database:", error);
+                document.getElementById('dynamic-models-container').innerHTML = '<p style="color: #ff2a4b; text-align: center;">Lỗi kết nối Firebase!</p>';
+            }
+        }
+
+        // Tạo ra các thẻ Model Viewer cỡ lớn
+        window.renderModelsToPage = function() {
+            const container = document.getElementById('dynamic-models-container');
+            container.innerHTML = ''; 
+
+            if(modelDatabase.length === 0) {
+                container.innerHTML = "<p style='text-align: center; color: gray;'>Cơ sở dữ liệu đang trống. Hãy thêm thực thể mới!</p>";
+                return;
+            }
+
+            modelDatabase.forEach((item, index) => {
+                // Tạo số thứ tự định dạng [01], [02]
+                const indexFormat = index + 1 < 10 ? `0${index + 1}` : index + 1;
+                
+                const block = document.createElement('div');
+                block.innerHTML = `
+                    <h2 style="text-align: center; color: var(--vku-gold); font-size: 1.5rem;">
+                        [${indexFormat}] ${item.name}
+                        <button class="delete-btn" onclick="deleteModel('${item.id}')">🗑 Xóa</button>
+                    </h2>
+                    <div class="ar-container">
+                        <model-viewer
+                            src="${item.url}"
+                            poster="${item.image}"
+                            camera-controls
+                            auto-rotate
+                            rotation-per-second="30deg"
+                            shadow-intensity="2"
+                            environment-image="neutral">
+                        </model-viewer>
+                    </div>
+                `;
+                container.appendChild(block);
+            });
+        }
+
+        // ==========================================
+        // 3. CHỨC NĂNG QUẢN TRỊ (XÓA & THÊM)
+        // ==========================================
+        window.deleteModel = async function(docId) {
+            const confirmDelete = confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa thực thể này vĩnh viễn khỏi Database?");
+            if (confirmDelete) {
+                try {
+                    await deleteDoc(doc(db, "models", docId)); 
+                    alert("✅ Đã xóa thành công!");
+                    
+                    // Hiện trạng thái đang tải và kéo dữ liệu mới
+                    document.getElementById('dynamic-models-container').innerHTML = '<p style="text-align: center; color: #00e5ff;">⏳ Đang cập nhật lại cơ sở dữ liệu...</p>';
+                    fetchFromFirebase(); 
+                } catch (error) {
+                    alert("Lỗi khi xóa: " + error.message);
+                }
+            }
+        }
+
+        window.openModal = function() {
+            const selectEl = document.getElementById('inp-category');
+            selectEl.innerHTML = ''; 
+            Object.keys(categoryDisplayNames).forEach(catCode => {
+                const option = document.createElement('option');
+                option.value = catCode;
+                option.text = categoryDisplayNames[catCode];
+                selectEl.appendChild(option);
+            });
+            document.getElementById('admin-modal').style.display = 'flex';
+        }
+
+        window.closeModal = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+            document.getElementById('btn-save').innerText = "Tải Lên & Lưu";
+            document.getElementById('btn-save').disabled = false;
+        }
+
+        async function uploadFileToCloudinary(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+            const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.secure_url) return data.secure_url;
+            throw new Error(data.error?.message || "Tải file thất bại");
+        }
+
+        window.submitNewModel = async function(event) {
+            event.preventDefault(); 
+            const btnSave = document.getElementById('btn-save');
+            const imgFile = document.getElementById('inp-image-file').files[0];
+            const modelFile = document.getElementById('inp-model-file').files[0];
+
+            if(!imgFile || !modelFile) return alert("Vui lòng chọn đầy đủ Ảnh và File 3D!");
+
+            btnSave.disabled = true;
+
+            try {
+                btnSave.innerText = "⏳ Đang tải ảnh nền...";
+                const imageUrl = await uploadFileToCloudinary(imgFile);
+
+                btnSave.innerText = "⏳ Đang tải mô hình 3D...";
+                const modelUrl = await uploadFileToCloudinary(modelFile);
+
+                btnSave.innerText = "⏳ Đang lưu Firebase...";
+                const newModel = {
+                    name: document.getElementById('inp-name').value,
+                    category: document.getElementById('inp-category').value,
+                    image: imageUrl,
+                    url: modelUrl
+                };
+
+                await addDoc(collection(db, "models"), newModel);
+                
+                alert("🎉 Đã thêm thực thể thành công!");
+                closeModal();
+                
+                // Kéo lại dữ liệu
+                document.getElementById('dynamic-models-container').innerHTML = '<p style="text-align: center; color: #00e5ff;">⏳ Đang đồng bộ thực thể mới...</p>';
+                fetchFromFirebase(); 
+
+            } catch (error) {
+                console.error("Lỗi:", error);
+                alert("🚨 Lỗi: " + error.message);
+                btnSave.innerText = "Thử lại";
+                btnSave.disabled = false;
+            }
+        }
+
+        // Tự động chạy khi load web
+        fetchFromFirebase();
+    </script>
   </body>
 </html>

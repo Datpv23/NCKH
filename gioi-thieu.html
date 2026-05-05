@@ -15,132 +15,73 @@
 
     <vku-header></vku-header>
 
-    <main>
-      <h1
-        class="gradient-text"
-        style="text-align: center; font-size: 2.8rem; margin-bottom: 30px"
-      >
-        Giới Thiệu Hệ Thống
-      </h1>
+  <main>
+  <h1 class="gradient-text" style="text-align: center; font-size: 2.8rem; margin-bottom: 30px">
+    Giới Thiệu Hệ Thống
+  </h1>
 
-      <div
-        class="ar-container"
-        style="max-width: 800px; margin: 0 auto; padding: 40px"
-      >
-        <h3
-          style="
-            color: var(--vku-red);
-            margin-top: 0;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          "
-        >
-          <span
-            style="
-              display: inline-block;
-              width: 10px;
-              height: 10px;
-              background: var(--vku-red);
-              border-radius: 50%;
-              box-shadow: 0 0 10px var(--vku-red);
-            "
-          ></span>
-          1. Đặt vấn đề
-        </h3>
-        <p style="color: var(--text-muted); margin-bottom: 25px">
-          Việc tiếp cận các không gian thực hành mỹ thuật tại trường Đại học đôi
-          khi bị giới hạn. Dự án "Mô phỏng không gian phòng học thực hành vẽ
-          VKU" ra đời nhằm giải quyết bài toán này thông qua công nghệ ảo hóa
-          không gian (Spatial Computing).
-        </p>
+  <div class="ar-container" style="max-width: 900px; margin: 0 auto; padding: 40px">
+    
+    <!-- 1. ĐẶT VẤN ĐỀ -->
+    <div style="background: var(--glass-bg); backdrop-filter: blur(10px); padding: 25px; border-radius: 20px; border: 1px solid var(--glass-border); border-left: 4px solid var(--vku-red); margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+      <h3 style="color: var(--vku-red); margin-top: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 0 0 15px var(--vku-red-glow);">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--vku-red); border-radius: 50%; box-shadow: 0 0 15px var(--vku-red);"></span>
+        1. Đặt vấn đề
+      </h3>
+      <p style="color: var(--text-main); margin-bottom: 15px; opacity: 0.9; text-align: justify;">
+        Trong xu thế chuyển đổi số giáo dục, việc tích hợp các công nghệ mới như Thực tế tăng cường (AR) trở thành hướng đi tất yếu. Đối với các ngành mỹ thuật và thiết kế, môi trường học tập đòi hỏi tính trực quan cao và sự tương tác sinh động với không gian.
+      </p>
+      <p style="color: var(--text-main); margin-bottom: 0; opacity: 0.9; text-align: justify;">
+        Tuy nhiên, chi phí đầu tư phòng học truyền thống thường rất tốn kém. Vì vậy, việc nghiên cứu hệ thống <strong>WebAR</strong> hoạt động trực tiếp trên trình duyệt là vô cùng cần thiết để giải quyết bài toán chi phí và tăng cường trải nghiệm thực tế cho sinh viên.
+      </p>
+    </div>
 
-        <h3
-          style="
-            color: var(--vku-gold);
-            margin-top: 20px;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          "
-        >
-          <span
-            style="
-              display: inline-block;
-              width: 10px;
-              height: 10px;
-              background: var(--vku-gold);
-              border-radius: 50%;
-              box-shadow: 0 0 10px var(--vku-gold);
-            "
-          ></span>
-          2. Mục tiêu nghiên cứu
-        </h3>
-        <ul
-          style="
-            margin-left: 20px;
-            margin-bottom: 25px;
-            color: var(--text-muted);
-          "
-        >
-          <li style="margin-bottom: 10px">
-            Số hóa không gian vật lý (giá vẽ, tượng thạch cao, bàn ghế) thành mô
-            hình 3D tối ưu.
-          </li>
-          <li style="margin-bottom: 10px">
-            Xây dựng nền tảng WebXR cho phép tương tác Hologram qua trình duyệt.
-          </li>
-          <li>
-            Nâng cao trải nghiệm học tập và trực quan hóa cơ sở vật chất của
-            VKU.
-          </li>
-        </ul>
+    <!-- 2. MỤC TIÊU NGHIÊN CỨU -->
+    <div style="background: var(--glass-bg); backdrop-filter: blur(10px); padding: 25px; border-radius: 20px; border: 1px solid var(--glass-border); border-left: 4px solid var(--vku-gold); margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+      <h3 style="color: var(--vku-gold); margin-top: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 0 0 15px var(--vku-gold-glow);">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--vku-gold); border-radius: 50%; box-shadow: 0 0 15px var(--vku-gold);"></span>
+        2. Mục tiêu nghiên cứu
+      </h3>
+      <p style="color: var(--text-main); margin-bottom: 10px; font-weight: 600;">Mục tiêu tổng quát:</p>
+      <p style="color: var(--text-main); margin-left: 20px; margin-bottom: 15px; opacity: 0.9;">Xây dựng hệ thống WebAR thiết kế và mô phỏng phòng học vẽ, giúp nâng cao khả năng trực quan hóa và hỗ trợ ra quyết định.</p>
+      
+      <p style="color: var(--text-main); margin-bottom: 10px; font-weight: 600;">Mục tiêu cụ thể:</p>
+      <ul style="margin-left: 40px; color: var(--text-main); opacity: 0.9;">
+        <li style="margin-bottom: 8px">Nghiên cứu cơ sở lý luận về WebAR và kỹ thuật mô hình hóa 3D trên trình duyệt.</li>
+        <li style="margin-bottom: 8px">Xây dựng kho dữ liệu mô hình 3D (giá vẽ, tượng...) chính xác về tỷ lệ.</li>
+        <li>Phát triển website WebAR cho phép người dùng tương tác với vật dụng trong môi trường thực.</li>
+      </ul>
+    </div>
 
-        <h3
-          style="
-            color: #4ade80;
-            margin-top: 20px;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          "
-        >
-          <span
-            style="
-              display: inline-block;
-              width: 10px;
-              height: 10px;
-              background: #4ade80;
-              border-radius: 50%;
-              box-shadow: 0 0 10px #4ade80;
-            "
-          ></span>
-          3. Lõi Công nghệ (Tech Core)
-        </h3>
-        <div
-          style="
-            background: rgba(255, 255, 255, 0.03);
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 3px solid #4ade80;
-          "
-        >
-          <p style="color: var(--text-main); margin-bottom: 5px">
-            <strong>Model Rendering:</strong> Google Model-Viewer & WebXR API
-          </p>
-          <p style="color: var(--text-main); margin-bottom: 5px">
-            <strong>3D Pipeline:</strong> Blender (Retopology & GLTF/GLB
-            Compression)
-          </p>
-          <p style="color: var(--text-main)">
-            <strong>Frontend:</strong> HTML5, CSS3 Glassmorphism, Vanilla JS
-          </p>
-        </div>
+    <!-- 3. PHƯƠNG PHÁP NGHIÊN CỨU - ĐÃ CHUYỂN SANG XANH VKU -->
+    <div style="background: var(--glass-bg); backdrop-filter: blur(10px); padding: 25px; border-radius: 20px; border: 1px solid var(--glass-border); border-left: 4px solid var(--vku-blue-brand); margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+      <h3 style="color: var(--vku-blue-brand); margin-top: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 0 0 15px var(--vku-blue-brand-glow);">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--vku-blue-brand); border-radius: 50%; box-shadow: 0 0 15px var(--vku-blue-brand);"></span>
+        3. Phương pháp nghiên cứu
+      </h3>
+      <ul style="margin-left: 20px; color: var(--text-main); opacity: 0.9;">
+        <li style="margin-bottom: 10px"><strong>Khảo sát & Phân tích:</strong> Tiến hành đo đạc thực tế và khảo sát nhu cầu sinh viên.</li>
+        <li style="margin-bottom: 10px"><strong>Mô hình hóa:</strong> Sử dụng phần mềm Blender dựng hình tối ưu định dạng .glb/.gltf cho WebAR.</li>
+        <li style="margin-bottom: 10px"><strong>Thực nghiệm phần mềm:</strong> Xây dựng bằng Vanilla JavaScript, WebXR API và Three.js.</li>
+        <li><strong>Đánh giá người dùng:</strong> Trải nghiệm thực tế và đánh giá qua các tiêu chí hiệu quả hỗ trợ thiết kế.</li>
+      </ul>
+    </div>
+
+    <!-- 4. ĐÓNG GÓP CỦA ĐỀ TÀI -->
+    <div style="background: var(--glass-bg); backdrop-filter: blur(10px); padding: 25px; border-radius: 20px; border: 1px solid var(--glass-border); border-left: 4px solid var(--ar-cyan); box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+      <h3 style="color: var(--ar-cyan); margin-top: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 0 0 15px var(--ar-cyan-glow);">
+        <span style="display: inline-block; width: 12px; height: 12px; background: var(--ar-cyan); border-radius: 50%; box-shadow: 0 0 15px var(--ar-cyan);"></span>
+        4. Đóng góp của đề tài
+      </h3>
+      <div style="display: grid; grid-template-columns: 1fr; gap: 15px; color: var(--text-main); opacity: 0.9;">
+        <div><strong>• Giáo dục:</strong> Đổi mới phương pháp học tập theo hướng trải nghiệm tương tác.</div>
+        <div><strong>• Kinh tế:</strong> Tiết kiệm chi phí đầu tư và thử nghiệm thực tế trước thi công.</div>
+        <div><strong>• Công nghệ:</strong> Đề xuất mô hình WebAR dễ triển khai, tương thích đa nền tảng.</div>
       </div>
-    </main>
+    </div>
+
+  </div>
+</main>
 
     <vku-footer></vku-footer>
   </body>

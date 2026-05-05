@@ -32,7 +32,7 @@ class VkuFooter extends HTMLElement {
     this.innerHTML = `
             <footer>
                 <p>Mô phỏng Không gian Phòng học Thực hành Vẽ <span>VKU</span></p>
-                <p>&copy; 2026 - Dự án nghiên cứu ứng dụng WebXR</p>
+                <p>&copy; 2026 - Dự án nghiên cứu khoa học WebAR</p>
             </footer>
         `;
   }
