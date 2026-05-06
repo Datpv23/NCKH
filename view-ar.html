@@ -32,11 +32,19 @@
             transform: translateX(-50%);
             background: var(--surface); backdrop-filter: blur(14px);
             border: 1px solid var(--border); border-radius: 100px;
-            padding: 6px 16px; /* Đã bóp nhỏ viền lại một chút cho cân với chữ */
-            font-size: 11px;   /* Chữ đã được làm nhỏ lại (cũ là 13px) */
+            padding: 6px 16px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--cyan); white-space: nowrap; pointer-events: none;
             z-index: 100; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* ── Nút Khôi Phục ── */
+        #btn-restore-scene {
+            display: none; position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
+            z-index: 100; background: var(--green); color: white; padding: 10px 20px;
+            border-radius: 20px; font-weight: bold; border: none; font-family: inherit;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; backdrop-filter: blur(10px);
         }
 
         /* ── Spinner ── */
@@ -136,11 +144,11 @@
             border-radius: 8px !important; 
             color: #fff !important;
             font-family: inherit !important;
-            font-size: 14px !important;    /* Ép cỡ chữ nhỏ lại cho bằng Menu */
+            font-size: 14px !important; 
             font-weight: 600 !important; 
-            padding: 8px 14px !important;  /* Bóp viền lại một xíu */
-            height: auto !important;       /* Bỏ chiều cao mặc định của Three.js */
-            line-height: normal !important;/* Chuẩn hóa lại dòng */
+            padding: 8px 14px !important; 
+            height: auto !important;    
+            line-height: normal !important;
             z-index: 95 !important;
             backdrop-filter: blur(10px) !important;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
@@ -150,6 +158,7 @@
 <body>
 
 <div id="status-bar">Đang khởi động & Tải dữ liệu...</div>
+<button id="btn-restore-scene">Đã tìm thấy phòng cũ (Chạm để khôi phục)</button>
 <div id="spinner"><div class="spin-ring"></div></div>
 
 <button id="btn-toggle-menu" class="menu-toggle-btn">☰ Menu</button>
@@ -246,10 +255,49 @@ let pinchActive = false, pinchInitDist = 0, pinchInitScale = 1;
 
 let categoryDisplayNames = {};
 let modelDatabase = {};
+let isRestoringScene = false; // Biến kiểm tra khôi phục phòng
 
 init();
 setupUI();
 setupGestures();
+
+// --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
+function autoSaveScene() {
+    if (placedObjects.length === 0) {
+        localStorage.removeItem('vku_ar_autosave');
+        return;
+    }
+
+    // Lấy vật thể đầu tiên làm Gốc Tọa Độ (Anchor)
+    const anchor = placedObjects[0];
+    const anchorMatrixInverse = anchor.matrixWorld.clone().invert();
+
+    const sceneData = placedObjects.map(wrapper => {
+        const pivotGroup = wrapper.children[0];
+        
+        // Tính toán vị trí và góc xoay TƯƠNG ĐỐI so với Gốc
+        const relativeMatrix = anchorMatrixInverse.clone().multiply(wrapper.matrixWorld);
+        const relPos = new THREE.Vector3();
+        const relQuat = new THREE.Quaternion();
+        relativeMatrix.decompose(relPos, relQuat, new THREE.Vector3());
+
+        return {
+            url: wrapper.userData.modelUrl,
+            isRoom: wrapper.userData.isRoom,
+            relPos: relPos.toArray(),
+            relQuat: relQuat.toArray(),
+            scale: wrapper.scale.x,
+            posY: pivotGroup.position.y,
+            baseY: pivotGroup.userData.baseY,
+            rot: pivotGroup.rotation.toArray()
+        };
+    });
+
+    localStorage.setItem('vku_ar_autosave', JSON.stringify(sceneData));
+}
+
+// Lưu khi thoát trang
+window.addEventListener('beforeunload', autoSaveScene);
 
 async function init() {
     scene = new THREE.Scene();
@@ -291,13 +339,11 @@ async function init() {
 // --- LOGIC FIREBASE VÀ RENDER SIDEBAR ---
 async function fetchFromFirebase() {
     try {
-        // Lấy danh mục
         const catSnapshot = await getDocs(collection(db, "categories"));
         catSnapshot.forEach(doc => {
             categoryDisplayNames[doc.id] = doc.data().name;
         });
 
-        // Lấy vật thể
         const modelSnapshot = await getDocs(collection(db, "models"));
         modelSnapshot.forEach(doc => {
             const data = doc.data();
@@ -320,23 +366,19 @@ function renderCategories() {
     document.getElementById('btn-back-cat').style.display = "none";
     content.innerHTML = "";
 
-    // Thêm nút cố định cho Phòng 3D
     const roomBtn = document.createElement('div');
     roomBtn.className = 'cat-item';
     roomBtn.style.borderColor = "var(--cyan)";
     roomBtn.innerHTML = `<span>🏠 Thiết Lập Phòng Ảo</span>`;
     roomBtn.addEventListener('pointerdown', (e) => {
         e.stopPropagation(); uiLockTime = Date.now();
-        // ĐƯỜNG DẪN MẶC ĐỊNH CỦA PHÒNG
         currentModelPath = "models/PHONGVE3D.glb"; 
-        
         document.getElementById('right-sidebar').classList.remove('open');
         if (activeObject) closeEditMode();
         setStatus("Quét sàn thật để đặt Phòng.");
     });
     content.appendChild(roomBtn);
 
-    // Duyệt danh mục từ Firebase
     Object.keys(categoryDisplayNames).forEach(id => {
         const btn = document.createElement('div');
         btn.className = 'cat-item';
@@ -363,11 +405,9 @@ function renderItems(catId) {
         card.innerHTML = `<img src="${item.image}"><div>${item.name}</div>`;
         card.addEventListener('pointerdown', (e) => {
             e.stopPropagation(); uiLockTime = Date.now();
-            
             currentModelPath = item.url;
             document.getElementById('right-sidebar').classList.remove('open');
             if (activeObject) closeEditMode();
-            
             setStatus(`Chạm vòng xanh để đặt: ${item.name}`);
         });
         grid.appendChild(card);
@@ -378,6 +418,43 @@ function renderItems(catId) {
 function onSelect() {
     if (uiTouched || (Date.now() - uiLockTime < 300)) return;
     if (!reticle.visible) return;
+
+    // KÍCH HOẠT KHÔI PHỤC KHI CHẠM MẶT PHẲNG
+    if (isRestoringScene) {
+        isRestoringScene = false; // Tắt cờ khôi phục
+        const savedData = JSON.parse(localStorage.getItem('vku_ar_autosave'));
+        
+        // Lấy vị trí reticle làm tọa độ Gốc Mới
+        const newAnchorMatrix = reticle.matrix.clone();
+
+        savedData.forEach(item => {
+            // Tái tạo ma trận tương đối
+            const relMatrix = new THREE.Matrix4().compose(
+                new THREE.Vector3().fromArray(item.relPos),
+                new THREE.Quaternion().fromArray(item.relQuat),
+                new THREE.Vector3(1, 1, 1)
+            );
+            
+            // Nhân để ra tọa độ thực tế trên sân mới
+            const targetMatrix = newAnchorMatrix.clone().multiply(relMatrix);
+            const targetPos = new THREE.Vector3();
+            const targetQuat = new THREE.Quaternion();
+            targetMatrix.decompose(targetPos, targetQuat, new THREE.Vector3());
+
+            // Đặt model
+            placeModel(item.url, {
+                pos: targetPos.toArray(),
+                quat: targetQuat.toArray(),
+                scale: item.scale,
+                posY: item.posY,
+                baseY: item.baseY,
+                rot: item.rot,
+                isRoom: item.isRoom
+            });
+        });
+        setStatus("Đang tải lại cụm phòng...");
+        return;
+    }
 
     const mat = new THREE.Matrix4().identity().extractRotation(controller.matrixWorld);
     raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
@@ -404,9 +481,9 @@ function onSelect() {
     if (currentModelPath && !activeObject) placeModel(currentModelPath);
 }
 
-function placeModel(path) {
+function placeModel(path, savedState = null) {
     const isRoom = path.includes('PHONGVE3D') || path.toLowerCase().includes('room');
-    showSpinner(true); setStatus('Đang tải mô hình…');
+    showSpinner(true); 
 
     gltfLoader.load(path, (gltf) => {
         const model = gltf.scene;
@@ -436,27 +513,42 @@ function placeModel(path) {
 
         const box2 = new THREE.Box3().setFromObject(model);
         const ctr  = box2.getCenter(new THREE.Vector3());
-        const size = box2.getSize(new THREE.Vector3()); // Lấy thêm kích thước Bounding Box
+        const size = box2.getSize(new THREE.Vector3()); 
 
         const wrapper = new THREE.Group();
-        wrapper.position.setFromMatrixPosition(reticle.matrix);
-        wrapper.quaternion.setFromRotationMatrix(reticle.matrix); 
+        wrapper.userData.modelUrl = path; 
+        wrapper.userData.isRoom = isRoom; 
 
-        // 1. TẠO PIVOT GROUP LÀM TÂM XOAY
+        // Gán Tọa Độ (Dựa theo Trạng Thái Khôi Phục hoặc Đặt Mới)
+        if (savedState) {
+            wrapper.position.fromArray(savedState.pos);
+            wrapper.quaternion.fromArray(savedState.quat);
+            wrapper.scale.setScalar(savedState.scale);
+        } else {
+            wrapper.position.setFromMatrixPosition(reticle.matrix);
+            wrapper.quaternion.setFromRotationMatrix(reticle.matrix); 
+        }
+
         const pivotGroup = new THREE.Group();
-
-        // 2. Dịch model sao cho TÂM CỦA NÓ (cả 3 trục) nằm chính xác ở tọa độ (0,0,0) của pivotGroup
         model.position.set(-ctr.x, -ctr.y, -ctr.z);
         pivotGroup.add(model);
 
-        // 3. Nâng pivotGroup lên mặt sàn (nâng một khoảng bằng đúng nửa chiều cao)
-        pivotGroup.position.y = size.y / 2;
-        pivotGroup.userData.baseY = size.y / 2; // Lưu lại để dùng cho thanh trượt Nổi/Cao
+        // Gán Trục Cao Y và Xoay Nội Bộ
+        if (savedState) {
+            pivotGroup.position.y = savedState.posY;
+            pivotGroup.rotation.fromArray(savedState.rot);
+            pivotGroup.userData.baseY = savedState.baseY;
+        } else {
+            pivotGroup.position.y = size.y / 2;
+            pivotGroup.userData.baseY = size.y / 2;
+        }
 
-        // 4. Thêm pivotGroup vào wrapper thay vì model
         wrapper.add(pivotGroup);
         scene.add(wrapper);
         placedObjects.push(wrapper);
+
+        // Tự động lưu nếu là đặt mới
+        if (!savedState) autoSaveScene();
 
         if (gltf.animations?.length) {
             const mixer = new THREE.AnimationMixer(model);
@@ -474,9 +566,10 @@ function placeModel(path) {
             mainRoom.userData.roomBox = rb;
 
             currentModelPath = null;
-            setStatus('Phòng đã đặt! Trỏ vào bề mặt ảo để đặt nội thất.');
+            if (!savedState) setStatus('Phòng đã đặt! Trỏ vào bề mặt ảo để đặt nội thất.');
+            else setStatus('Đã khôi phục đồ vật!');
         } else {
-            setStatus('Chạm vật để sửa, hoặc mở Menu chọn vật khác.');
+            if (!savedState) setStatus('Chạm vật để sửa, hoặc mở Menu chọn vật khác.');
         }
         showSpinner(false);
     }, undefined, () => { setStatus('❌ Lỗi tải model.'); showSpinner(false); });
@@ -506,6 +599,7 @@ function closeEditMode() {
     uiLockTime = Date.now();
     document.getElementById('edit-panel').style.display = 'none';
     setStatus('Chạm không gian để đặt · Chạm vật để chỉnh sửa');
+    autoSaveScene(); // LƯU SAU KHI SỬA
 }
 
 function deleteActive() {
@@ -523,10 +617,12 @@ function deleteActive() {
     });
     if (mixerMap.has(activeObject)) { mixerMap.get(activeObject).stopAllAction(); mixerMap.delete(activeObject); }
     scene.remove(activeObject); placedObjects.splice(placedObjects.indexOf(activeObject), 1);
+    
     closeEditMode();
+    autoSaveScene(); // LƯU SAU KHI XÓA
 }
 
-// --- SETUP UI (BẢO VỆ CHỐNG TRÀN SỰ KIỆN) ---
+// --- SETUP UI ---
 function setupUI() {
     const panels = [
         document.getElementById('right-sidebar'), 
@@ -539,6 +635,19 @@ function setupUI() {
         panel.addEventListener('pointerdown', e => { e.stopPropagation(); uiTouched = true; });
         panel.addEventListener('pointerup', () => { uiTouched = false; });
         panel.addEventListener('pointercancel', () => { uiTouched = false; });
+    });
+
+    // Hiện nút khôi phục nếu có data
+    if (localStorage.getItem('vku_ar_autosave')) {
+        document.getElementById('btn-restore-scene').style.display = 'block';
+    }
+
+    // Xử lý nút khôi phục
+    document.getElementById('btn-restore-scene').addEventListener('pointerdown', (e) => {
+        e.stopPropagation(); uiLockTime = Date.now();
+        isRestoringScene = true; 
+        e.target.style.display = 'none'; 
+        setStatus('🔄 Quét sàn, chọn vị trí và chạm vòng xanh để đặt CẢ CỤM PHÒNG.');
     });
 
     // Sidebar actions
@@ -658,10 +767,11 @@ function renderLoop(timestamp, frame) {
 }
 
 function onSessionEnd() {
+    autoSaveScene(); // Lưu trước khi tắt AR
     hitTestSourceRequested = false; hitTestSource = null; planeFound = false; mainRoom = null;
     document.getElementById('right-sidebar').classList.remove('open'); 
     document.getElementById('edit-panel').style.display = 'none';
-    window.location.href = 'demo-ar.html';
+    window.location.href = 'demo-ar.html'; // Đổi lại trang gốc của bạn nếu cần
 }
 function setStatus(msg) { document.getElementById('status-bar').textContent = msg; }
 function showSpinner(on) { document.getElementById('spinner').classList.toggle('active', on); }

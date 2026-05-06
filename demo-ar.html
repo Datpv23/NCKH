@@ -1,217 +1,384 @@
 <!doctype html>
 <html lang="vi">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Xem Mô Hình 3D - VKU AR DrawRoom</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/components.js" defer></script>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
+    ></script>
 
     <style>
-    :root {
+      :root {
         --vku-cyan: #00e5ff;
         --vku-blue: #0b1426;
         --vku-glow: rgba(0, 229, 255, 0.4);
-    }
+      }
 
-    /* --- TOÀN BỘ TRANG --- */
-    body { background: #050a14; margin: 0; font-family: sans-serif; color: white; }
+      /* --- TOÀN BỘ TRANG --- */
+      body {
+        background: #050a14;
+        margin: 0;
+        font-family: sans-serif;
+        color: white;
+      }
 
-    /* --- CONTAINER NÂNG CẤP --- */
-    .ar-container { 
-        position: relative; 
-        max-width: 1000px; 
-        margin: 20px auto; 
+      /* --- CONTAINER NÂNG CẤP --- */
+      .ar-container {
+        position: relative;
+        max-width: 1000px;
+        margin: 20px auto;
         height: 70vh;
-        overflow: hidden; 
-        border-radius: 24px; 
+        overflow: hidden;
+        border-radius: 24px;
         background: radial-gradient(circle at center, #1a2a44 0%, #050a14 100%);
         border: 1px solid rgba(0, 229, 255, 0.2);
-        box-shadow: 0 10px 50px rgba(0,0,0,0.5);
-    }
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+      }
 
-    /* Hiệu ứng lưới Grid */
-    .ar-container::before {
-        content: ""; position: absolute; inset: 0;
-        background-image: linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
-        background-size: 30px 30px; pointer-events: none;
-    }
+      /* Hiệu ứng lưới Grid */
+      .ar-container::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+        background-size: 30px 30px;
+        pointer-events: none;
+      }
 
-    /* --- NÚT MENU ĐỒ VẬT --- */
-    .menu-toggle-btn {
-        position: absolute; top: 20px; left: 20px; z-index: 100;
-        background: rgba(11, 20, 38, 0.8); color: white; border: 1px solid var(--vku-cyan);
-        padding: 10px 18px; border-radius: 12px; font-weight: bold; cursor: pointer;
-        backdrop-filter: blur(10px); transition: 0.3s;
-    }
-    .menu-toggle-btn:hover { background: var(--vku-cyan); color: var(--vku-blue); box-shadow: 0 0 15px var(--vku-glow); }
+      /* --- NÚT MENU ĐỒ VẬT --- */
+      .menu-toggle-btn {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 100;
+        background: rgba(11, 20, 38, 0.8);
+        color: white;
+        border: 1px solid var(--vku-cyan);
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        transition: 0.3s;
+      }
+      .menu-toggle-btn:hover {
+        background: var(--vku-cyan);
+        color: var(--vku-blue);
+        box-shadow: 0 0 15px var(--vku-glow);
+      }
 
-    /* --- NÚT KHỞI ĐỘNG AR --- */
-    .launch-ar-btn {
-        position: absolute; bottom: 25px; right: 25px; z-index: 90;
-        background: var(--vku-cyan); color: var(--vku-blue); border: none;
-        padding: 14px 24px; border-radius: 50px; font-weight: 800;
-        display: flex; align-items: center; gap: 8px; text-decoration: none;
-        box-shadow: 0 5px 20px var(--vku-glow); transition: 0.3s;
-    }
-    .launch-ar-btn:hover { transform: translateY(-3px); background: #fff; }
+      /* --- NÚT KHỞI ĐỘNG AR --- */
+      .launch-ar-btn {
+        position: absolute;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 90;
+        background: var(--vku-cyan);
+        color: var(--vku-blue);
+        border: none;
+        padding: 14px 24px;
+        border-radius: 50px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Đảm bảo icon và chữ luôn canh giữa nút */
+        gap: 8px;
+        text-decoration: none;
+        white-space: nowrap; /* Ép chữ nằm trên 1 dòng, không bị rớt chữ AR xuống dưới */
+        box-shadow: 0 5px 20px var(--vku-glow);
+        transition: 0.3s;
+      }
+      .launch-ar-btn:hover {
+        transform: translateX(-50%) translateY(-3px); /* Phải giữ lại translateX(-50%) để nút không bị lệch khi hover */
+        background: #fff;
+      }
 
-    /* --- SIDEBAR MENU (NGĂN KÉO ĐỒ VẬT) --- */
-    .side-menu {
-        position: absolute; top: 0; left: -100%; width: 320px; height: 100%;
-        background: rgba(11, 20, 38, 0.9); z-index: 110;
+      /* --- SIDEBAR MENU (NGĂN KÉO ĐỒ VẬT) --- */
+      .side-menu {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 320px;
+        height: 100%;
+        background: rgba(11, 20, 38, 0.9);
+        z-index: 110;
         transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex; flex-direction: column;
+        display: flex;
+        flex-direction: column;
         border-right: 1px solid rgba(0, 229, 255, 0.3);
         backdrop-filter: blur(20px);
-    }
-    .side-menu.open { left: 0; }
-    
-    /* Responsive cho điện thoại */
-    @media (max-width: 600px) {
-        .side-menu { width: 85%; }
-        .ar-container { height: 60vh; margin: 10px; border-radius: 16px; }
-        h1 { font-size: 1.8rem !important; }
-    }
+      }
+      .side-menu.open {
+        left: 0;
+      }
 
-    .menu-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
-    .menu-content { padding: 15px; overflow-y: auto; flex: 1; }
+      /* Responsive cho điện thoại */
+      @media (max-width: 600px) {
+        .side-menu {
+          width: 85%;
+        }
+        .ar-container {
+          height: 60vh;
+          margin: 10px;
+          border-radius: 16px;
+        }
+        h1 {
+          font-size: 1.8rem !important;
+        }
+      }
 
-    .category-item {
-        background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px;
-        border-radius: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
-        display: flex; justify-content: space-between; transition: 0.2s;
-    }
-    .category-item:hover { background: rgba(0, 229, 255, 0.1); border-color: var(--vku-cyan); }
+      .menu-header {
+        padding: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .menu-content {
+        padding: 15px;
+        overflow-y: auto;
+        flex: 1;
+      }
 
-    .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .model-card {
-        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px; overflow: hidden; cursor: pointer; text-align: center; transition: 0.2s;
-    }
-    .model-card img { width: 100%; height: 80px; object-fit: cover; background: white; }
-    .model-card div { padding: 8px; font-size: 11px; font-weight: bold; }
-    .model-card:hover { border-color: var(--vku-cyan); transform: scale(1.02); }
+      .category-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 12px;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        transition: 0.2s;
+      }
+      .category-item:hover {
+        background: rgba(0, 229, 255, 0.1);
+        border-color: var(--vku-cyan);
+      }
+
+      .items-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .model-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        text-align: center;
+        transition: 0.2s;
+      }
+      .model-card img {
+        width: 100%;
+        height: 80px;
+        object-fit: cover;
+        background: white;
+      }
+      .model-card div {
+        padding: 8px;
+        font-size: 11px;
+        font-weight: bold;
+      }
+      .model-card:hover {
+        border-color: var(--vku-cyan);
+        transform: scale(1.02);
+      }
     </style>
-</head>
-<body>
-    <div id="splash-screen"><div class="loader-core"></div><div class="loader-text">ĐANG ĐỒNG BỘ DỮ LIỆU...</div></div>
-    
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="loader-core"></div>
+      <div class="loader-text">ĐANG ĐỒNG BỘ DỮ LIỆU...</div>
+    </div>
+
     <!-- HEADER CHÍNH CỦA TRANG WEB -->
     <vku-header></vku-header>
 
     <main>
-        <h1 class="gradient-text" style="text-align: center; font-size: 2.5rem; margin-top: 20px;">Trình Xem Mô Hình 3D</h1>
-        
-        <div class="ar-container">
+      <h1
+        class="gradient-text"
+        style="text-align: center; font-size: 2.5rem; margin-top: 20px"
+      >
+        Trình Xem Mô Hình 3D
+      </h1>
+
+      <div class="ar-container">
+        <!-- ĐÃ SỬA: Gọi hàm toggleObjectMenu() -->
+        <button class="menu-toggle-btn" onclick="toggleObjectMenu()">
+          ☰ Menu Đồ Vật
+        </button>
+
+        <a href="view-ar.html" class="launch-ar-btn">
+          <svg
+            viewBox="0 0 24 24"
+            style="width: 20px; height: 20px; fill: currentColor"
+          >
+            <path
+              d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"
+            />
+          </svg>
+          Khởi động AR
+        </a>
+
+        <div id="side-menu" class="side-menu">
+          <div class="menu-header">
+            <button
+              id="back-btn"
+              class="icon-btn"
+              onclick="renderCategories()"
+              style="
+                display: none;
+                color: var(--vku-cyan);
+                background: none;
+                border: none;
+                font-size: 20px;
+                cursor: pointer;
+              "
+            >
+              ⬅
+            </button>
+            <h3 id="menu-title" style="margin: 0">Danh Mục</h3>
             <!-- ĐÃ SỬA: Gọi hàm toggleObjectMenu() -->
-            <button class="menu-toggle-btn" onclick="toggleObjectMenu()">☰ Menu Đồ Vật</button>
-
-            <a href="view-ar.html" class="launch-ar-btn">
-                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                Khởi động AR
-            </a>
-
-            <div id="side-menu" class="side-menu">
-                <div class="menu-header">
-                    <button id="back-btn" class="icon-btn" onclick="renderCategories()" style="display:none; color: var(--vku-cyan); background:none; border:none; font-size: 20px; cursor:pointer;">⬅</button>
-                    <h3 id="menu-title" style="margin:0">Danh Mục</h3>
-                    <!-- ĐÃ SỬA: Gọi hàm toggleObjectMenu() -->
-                    <button onclick="toggleObjectMenu()" style="background:none; border:none; color:white; font-size:20px; cursor:pointer;">✖</button>
-                </div>
-                <div id="menu-content" class="menu-content"></div>
-            </div>
-            
-            <model-viewer id="ar-viewer" src="" camera-controls auto-rotate shadow-intensity="1" environment-image="neutral" style="width: 100%; height: 100%;">
-            </model-viewer>
+            <button
+              onclick="toggleObjectMenu()"
+              style="
+                background: none;
+                border: none;
+                color: white;
+                font-size: 20px;
+                cursor: pointer;
+              "
+            >
+              ✖
+            </button>
+          </div>
+          <div id="menu-content" class="menu-content"></div>
         </div>
+
+        <model-viewer
+          id="ar-viewer"
+          src=""
+          camera-controls
+          auto-rotate
+          shadow-intensity="1"
+          environment-image="neutral"
+          style="width: 100%; height: 100%"
+        >
+        </model-viewer>
+      </div>
     </main>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
-            authDomain: "vku-ar-project.firebaseapp.com",
-            projectId: "vku-ar-project",
-            storageBucket: "vku-ar-project.firebasestorage.app",
-            messagingSenderId: "595437202444",
-            appId: "1:595437202444:web:7939802383d326eee75229"
-        };
+      const firebaseConfig = {
+        apiKey: "AIzaSyCQjyaUgKxHqgfW3aaxsgwxUfOPePCkVVA",
+        authDomain: "vku-ar-project.firebaseapp.com",
+        projectId: "vku-ar-project",
+        storageBucket: "vku-ar-project.firebasestorage.app",
+        messagingSenderId: "595437202444",
+        appId: "1:595437202444:web:7939802383d326eee75229",
+      };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
-        let categoryDisplayNames = {}; 
-        let modelDatabase = {}; 
+      let categoryDisplayNames = {};
+      let modelDatabase = {};
 
-        const menuContent = document.getElementById('menu-content');
-        const menuTitle = document.getElementById('menu-title');
-        const backBtn = document.getElementById('back-btn');
-        const arViewer = document.getElementById('ar-viewer');
-        const sideMenu = document.getElementById('side-menu');
+      const menuContent = document.getElementById("menu-content");
+      const menuTitle = document.getElementById("menu-title");
+      const backBtn = document.getElementById("back-btn");
+      const arViewer = document.getElementById("ar-viewer");
+      const sideMenu = document.getElementById("side-menu");
 
-        // ĐÃ SỬA: Đổi tên hàm từ toggleMenu thành toggleObjectMenu
-        window.toggleObjectMenu = function() {
-            sideMenu.classList.toggle('open');
-            if(sideMenu.classList.contains('open') && Object.keys(modelDatabase).length > 0 && backBtn.style.display !== 'inline-block') {
-                renderCategories();
-            }
+      // ĐÃ SỬA: Đổi tên hàm từ toggleMenu thành toggleObjectMenu
+      window.toggleObjectMenu = function () {
+        sideMenu.classList.toggle("open");
+        if (
+          sideMenu.classList.contains("open") &&
+          Object.keys(modelDatabase).length > 0 &&
+          backBtn.style.display !== "inline-block"
+        ) {
+          renderCategories();
         }
+      };
 
-        async function fetchFromFirebase() {
-            try {
-                const catSnapshot = await getDocs(collection(db, "categories"));
-                catSnapshot.forEach(doc => { categoryDisplayNames[doc.id] = doc.data().name; });
+      async function fetchFromFirebase() {
+        try {
+          const catSnapshot = await getDocs(collection(db, "categories"));
+          catSnapshot.forEach((doc) => {
+            categoryDisplayNames[doc.id] = doc.data().name;
+          });
 
-                const modelSnapshot = await getDocs(collection(db, "models"));
-                let firstUrl = "";
-                modelSnapshot.forEach(doc => {
-                    const d = doc.data();
-                    const cat = d.category || "khac";
-                    if (!modelDatabase[cat]) modelDatabase[cat] = [];
-                    modelDatabase[cat].push({ name: d.name, url: d.url, image: d.image });
-                    if(!firstUrl) firstUrl = d.url;
-                });
-                if(firstUrl) arViewer.src = firstUrl;
-                renderCategories();
-            } catch (e) { console.error(e); }
-        }
-
-        window.renderCategories = function() {
-            menuTitle.innerText = "Danh Mục";
-            backBtn.style.display = 'none';
-            menuContent.innerHTML = '';
-            Object.keys(categoryDisplayNames).forEach(id => {
-                const div = document.createElement('div');
-                div.className = 'category-item';
-                div.innerHTML = `<span>${categoryDisplayNames[id]}</span> <span>❯</span>`;
-                div.onclick = () => renderItems(id, categoryDisplayNames[id]);
-                menuContent.appendChild(div);
+          const modelSnapshot = await getDocs(collection(db, "models"));
+          let firstUrl = "";
+          modelSnapshot.forEach((doc) => {
+            const d = doc.data();
+            const cat = d.category || "khac";
+            if (!modelDatabase[cat]) modelDatabase[cat] = [];
+            modelDatabase[cat].push({
+              name: d.name,
+              url: d.url,
+              image: d.image,
             });
+            if (!firstUrl) firstUrl = d.url;
+          });
+          if (firstUrl) arViewer.src = firstUrl;
+          renderCategories();
+        } catch (e) {
+          console.error(e);
         }
+      }
 
-        window.renderItems = function(id, name) {
-            menuTitle.innerText = name;
-            backBtn.style.display = 'inline-block';
-            menuContent.innerHTML = '<div class="items-grid"></div>';
-            const grid = menuContent.firstChild;
-            (modelDatabase[id] || []).forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.innerHTML = `<img src="${item.image}"><div>${item.name}</div>`;
-                
-                // ĐÃ SỬA: Gọi hàm toggleObjectMenu() để đóng menu sau khi chọn đồ vật
-                card.onclick = () => { arViewer.src = item.url; toggleObjectMenu(); }; 
-                
-                grid.appendChild(card);
-            });
-        }
+      window.renderCategories = function () {
+        menuTitle.innerText = "Danh Mục";
+        backBtn.style.display = "none";
+        menuContent.innerHTML = "";
+        Object.keys(categoryDisplayNames).forEach((id) => {
+          const div = document.createElement("div");
+          div.className = "category-item";
+          div.innerHTML = `<span>${categoryDisplayNames[id]}</span> <span>❯</span>`;
+          div.onclick = () => renderItems(id, categoryDisplayNames[id]);
+          menuContent.appendChild(div);
+        });
+      };
 
-        fetchFromFirebase();
+      window.renderItems = function (id, name) {
+        menuTitle.innerText = name;
+        backBtn.style.display = "inline-block";
+        menuContent.innerHTML = '<div class="items-grid"></div>';
+        const grid = menuContent.firstChild;
+        (modelDatabase[id] || []).forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "model-card";
+          card.innerHTML = `<img src="${item.image}"><div>${item.name}</div>`;
+
+          // ĐÃ SỬA: Gọi hàm toggleObjectMenu() để đóng menu sau khi chọn đồ vật
+          card.onclick = () => {
+            arViewer.src = item.url;
+            toggleObjectMenu();
+          };
+
+          grid.appendChild(card);
+        });
+      };
+
+      fetchFromFirebase();
     </script>
-</body>
+  </body>
 </html>
