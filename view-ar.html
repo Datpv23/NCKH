@@ -417,15 +417,25 @@ function placeModel(path) {
 
         const box2 = new THREE.Box3().setFromObject(model);
         const ctr  = box2.getCenter(new THREE.Vector3());
-        
+        const size = box2.getSize(new THREE.Vector3()); // Lấy thêm kích thước Bounding Box
+
         const wrapper = new THREE.Group();
         wrapper.position.setFromMatrixPosition(reticle.matrix);
         wrapper.quaternion.setFromRotationMatrix(reticle.matrix); 
-        
-        model.position.set(-ctr.x, -box2.min.y, -ctr.z);
-        model.userData.baseY = -box2.min.y; 
 
-        wrapper.add(model);
+        // 1. TẠO PIVOT GROUP LÀM TÂM XOAY
+        const pivotGroup = new THREE.Group();
+
+        // 2. Dịch model sao cho TÂM CỦA NÓ (cả 3 trục) nằm chính xác ở tọa độ (0,0,0) của pivotGroup
+        model.position.set(-ctr.x, -ctr.y, -ctr.z);
+        pivotGroup.add(model);
+
+        // 3. Nâng pivotGroup lên mặt sàn (nâng một khoảng bằng đúng nửa chiều cao)
+        pivotGroup.position.y = size.y / 2;
+        pivotGroup.userData.baseY = size.y / 2; // Lưu lại để dùng cho thanh trượt Nổi/Cao
+
+        // 4. Thêm pivotGroup vào wrapper thay vì model
+        wrapper.add(pivotGroup);
         scene.add(wrapper);
         placedObjects.push(wrapper);
 
