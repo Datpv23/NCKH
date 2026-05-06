@@ -25,8 +25,12 @@
         }
 
         /* ── Status bar ── */
+        /* ── Status bar ── */
         #status-bar {
-            position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+            position: fixed; 
+            top: 75px; /* Đã xích xuống dưới để né hàng nút bên trên */
+            left: 50%; 
+            transform: translateX(-50%);
             background: var(--surface); backdrop-filter: blur(14px);
             border: 1px solid var(--border); border-radius: 100px;
             padding: 8px 20px; font-size: 13px; font-weight: 600;
@@ -122,20 +126,16 @@
 
         #ARButton {
             position: fixed !important; 
-            top: 15px !important;       /* Neo lên góc trên */
-            bottom: auto !important;    /* Xóa vị trí bottom mặc định của Three.js */
+            bottom: 28px !important; 
             left: 15px !important;      /* Neo sát lề trái */
             transform: none !important; /* Bỏ lệnh dịch chuyển căn giữa */
-            background: var(--surface) !important; 
-            border: 1px solid var(--red) !important; /* Viền đỏ báo hiệu nút Thoát */
-            border-radius: 8px !important; 
+            background: var(--red) !important; /* Nút đỏ cảnh báo thoát */
+            border: none !important; 
+            border-radius: 100px !important; 
             color: #fff !important;
-            font-family: inherit !important;
-            font-weight: 600 !important; 
-            padding: 10px 16px !important; 
-            z-index: 95 !important;
-            backdrop-filter: blur(10px) !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+            font-weight: 700 !important; 
+            padding: 12px 24px !important; 
+            z-index: 80 !important;
         }
     </style>
 </head>
