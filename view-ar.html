@@ -39,14 +39,6 @@
             z-index: 100; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
-        /* ── Nút Khôi Phục ── */
-        #btn-restore-scene {
-            display: none; position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
-            z-index: 100; background: var(--green); color: white; padding: 10px 20px;
-            border-radius: 20px; font-weight: bold; border: none; font-family: inherit;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; backdrop-filter: blur(10px);
-        }
-
         /* ── Spinner ── */
         #spinner {
             display: none; position: fixed; inset: 0; align-items: center;
@@ -74,6 +66,7 @@
             border-left: 1px solid var(--border); z-index: 110;
             transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex; flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.5);
         }
         #right-sidebar.open { transform: translateX(0); }
 
@@ -91,9 +84,9 @@
         .cat-item {
             background: var(--glass); padding: 15px; margin-bottom: 10px; border-radius: 10px;
             cursor: pointer; display: flex; justify-content: space-between; border: 1px solid var(--border);
-            font-weight: 600; font-size: 14px; transition: background 0.2s;
+            font-weight: 600; font-size: 14px; transition: background 0.2s; align-items: center;
         }
-        .cat-item:active { background: rgba(255,255,255,0.15); }
+        .cat-item:active { background: rgba(255,255,255,0.15); transform: scale(0.98); }
 
         /* Giao diện lưới đồ vật */
         .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -158,7 +151,6 @@
 <body>
 
 <div id="status-bar">Đang khởi động & Tải dữ liệu...</div>
-<button id="btn-restore-scene">Đã tìm thấy phòng cũ (Chạm để khôi phục)</button>
 <div id="spinner"><div class="spin-ring"></div></div>
 
 <button id="btn-toggle-menu" class="menu-toggle-btn">☰ Menu</button>
@@ -255,14 +247,13 @@ let pinchActive = false, pinchInitDist = 0, pinchInitScale = 1;
 
 let categoryDisplayNames = {};
 let modelDatabase = {};
-let isRestoringScene = false; // Biến kiểm tra khôi phục phòng
+let isRestoringScene = false; 
 
 init();
 setupUI();
 setupGestures();
 
-// --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
-// --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
+// --- TỰ ĐỘNG LƯU TRẠNG THÁI (Thuật toán Ma trận Tương đối Chính xác) ---
 function autoSaveScene() {
     if (placedObjects.length === 0) {
         localStorage.removeItem('vku_ar_autosave');
@@ -272,28 +263,23 @@ function autoSaveScene() {
     // Ưu tiên lấy cái Phòng làm Gốc (Anchor), nếu không có phòng thì lấy vật đầu tiên
     const anchor = mainRoom || placedObjects[0];
     
-    // Bắt buộc cập nhật ma trận thế giới mới nhất trước khi tính toán
+    // Cập nhật ma trận mới nhất
     anchor.updateMatrixWorld(true);
     placedObjects.forEach(obj => obj.updateMatrixWorld(true));
 
-    // Lấy Tọa độ và Góc xoay của vật làm Gốc
     const anchorPos = new THREE.Vector3();
     const anchorQuat = new THREE.Quaternion();
     anchor.matrixWorld.decompose(anchorPos, anchorQuat, new THREE.Vector3());
     
-    // Nghịch đảo góc xoay của Gốc
     const anchorQuatInverse = anchorQuat.clone().invert();
 
     const sceneData = placedObjects.map(wrapper => {
         const pivotGroup = wrapper.children[0];
-        
         const objPos = new THREE.Vector3();
         const objQuat = new THREE.Quaternion();
         wrapper.matrixWorld.decompose(objPos, objQuat, new THREE.Vector3());
 
-        // Tính vị trí TƯƠNG ĐỐI (Khoảng cách từ vật đến Gốc, bẻ theo góc xoay của Gốc)
         const relPos = objPos.clone().sub(anchorPos).applyQuaternion(anchorQuatInverse);
-        // Tính góc xoay TƯƠNG ĐỐI
         const relQuat = anchorQuatInverse.clone().multiply(objQuat);
 
         return {
@@ -301,7 +287,7 @@ function autoSaveScene() {
             isRoom: wrapper.userData.isRoom,
             relPos: relPos.toArray(),
             relQuat: relQuat.toArray(),
-            scale: wrapper.scale.x,  // Lưu riêng Scale, không đưa vào ma trận để tránh nhiễu
+            scale: wrapper.scale.x,  
             posY: pivotGroup.position.y,
             baseY: pivotGroup.userData.baseY,
             rot: pivotGroup.rotation.toArray()
@@ -311,7 +297,6 @@ function autoSaveScene() {
     localStorage.setItem('vku_ar_autosave', JSON.stringify(sceneData));
 }
 
-// Lưu khi thoát trang
 window.addEventListener('beforeunload', autoSaveScene);
 
 async function init() {
@@ -328,9 +313,11 @@ async function init() {
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    document.body.appendChild(ARButton.createButton(renderer, {
+    // Tạo AR Button và gắn lên Body
+    const arButtonElement = ARButton.createButton(renderer, {
         requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body }
-    }));
+    });
+    document.body.appendChild(arButtonElement);
 
     const geo = new THREE.RingGeometry(0.08, 0.13, 36).rotateX(-Math.PI / 2);
     reticle = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide }));
@@ -350,6 +337,19 @@ async function init() {
     await fetchFromFirebase();
     renderer.setAnimationLoop(renderLoop);
 }
+
+// --- BẢO VỆ GIAO DIỆN KHỎI SỰ KIỆN XUYÊN THỦNG ---
+// Lắng nghe sự kiện toàn cục: Khi bấm vào UI web (Bao gồm Stop AR Button), chặn XR Select lại
+document.addEventListener('beforexrselect', (ev) => {
+    const isUI = ev.target.id === 'ARButton' || 
+                 ev.target.closest('#right-sidebar') || 
+                 ev.target.closest('#edit-panel') || 
+                 ev.target.closest('#btn-toggle-menu');
+    if (isUI) {
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+}, true);
 
 // --- LOGIC FIREBASE VÀ RENDER SIDEBAR ---
 async function fetchFromFirebase() {
@@ -381,10 +381,28 @@ function renderCategories() {
     document.getElementById('btn-back-cat').style.display = "none";
     content.innerHTML = "";
 
+    // 1. NÚT KHÔI PHỤC DỰ ÁN NẰM TRÊN CÙNG
+    if (localStorage.getItem('vku_ar_autosave')) {
+        const restoreBtn = document.createElement('div');
+        restoreBtn.className = 'cat-item';
+        restoreBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+        restoreBtn.style.borderColor = '#4ade80';
+        restoreBtn.style.color = '#fff';
+        restoreBtn.innerHTML = `<span>📂 Dự án đã lưu: Khôi phục</span>`;
+        restoreBtn.addEventListener('pointerdown', (e) => {
+            e.stopPropagation(); uiLockTime = Date.now();
+            document.getElementById('right-sidebar').classList.remove('open');
+            isRestoringScene = true; 
+            setStatus('🔄 Quét sàn, chọn vị trí và chạm vòng xanh để ĐẶT LẠI CĂN PHÒNG.');
+        });
+        content.appendChild(restoreBtn);
+    }
+
+    // 2. Nút Phòng Ảo Mới
     const roomBtn = document.createElement('div');
     roomBtn.className = 'cat-item';
     roomBtn.style.borderColor = "var(--cyan)";
-    roomBtn.innerHTML = `<span>🏠 Thiết Lập Phòng Ảo</span>`;
+    roomBtn.innerHTML = `<span>🏠 Thiết Lập Phòng Ảo Mới</span>`;
     roomBtn.addEventListener('pointerdown', (e) => {
         e.stopPropagation(); uiLockTime = Date.now();
         currentModelPath = "models/PHONGVE3D.glb"; 
@@ -394,6 +412,7 @@ function renderCategories() {
     });
     content.appendChild(roomBtn);
 
+    // 3. Các danh mục đồ nội thất
     Object.keys(categoryDisplayNames).forEach(id => {
         const btn = document.createElement('div');
         btn.className = 'cat-item';
@@ -580,7 +599,7 @@ function placeModel(path, savedState = null) {
 
             currentModelPath = null;
             if (!savedState) setStatus('Phòng đã đặt! Trỏ vào bề mặt ảo để đặt nội thất.');
-            else setStatus('Đã khôi phục đồ vật!');
+            else setStatus('Đã khôi phục căn phòng hoàn tất!');
         } else {
             if (!savedState) setStatus('Chạm vật để sửa, hoặc mở Menu chọn vật khác.');
         }
@@ -635,7 +654,7 @@ function deleteActive() {
     autoSaveScene(); // LƯU SAU KHI XÓA
 }
 
-// --- SETUP UI ---
+// --- SETUP UI CHUNG ---
 function setupUI() {
     const panels = [
         document.getElementById('right-sidebar'), 
@@ -644,23 +663,9 @@ function setupUI() {
     ];
 
     panels.forEach(panel => {
-        panel.addEventListener('beforexrselect', e => { e.preventDefault(); e.stopPropagation(); });
         panel.addEventListener('pointerdown', e => { e.stopPropagation(); uiTouched = true; });
         panel.addEventListener('pointerup', () => { uiTouched = false; });
         panel.addEventListener('pointercancel', () => { uiTouched = false; });
-    });
-
-    // Hiện nút khôi phục nếu có data
-    if (localStorage.getItem('vku_ar_autosave')) {
-        document.getElementById('btn-restore-scene').style.display = 'block';
-    }
-
-    // Xử lý nút khôi phục
-    document.getElementById('btn-restore-scene').addEventListener('pointerdown', (e) => {
-        e.stopPropagation(); uiLockTime = Date.now();
-        isRestoringScene = true; 
-        e.target.style.display = 'none'; 
-        setStatus('🔄 Quét sàn, chọn vị trí và chạm vòng xanh để đặt CẢ CỤM PHÒNG.');
     });
 
     // Sidebar actions
@@ -784,7 +789,7 @@ function onSessionEnd() {
     hitTestSourceRequested = false; hitTestSource = null; planeFound = false; mainRoom = null;
     document.getElementById('right-sidebar').classList.remove('open'); 
     document.getElementById('edit-panel').style.display = 'none';
-    window.location.href = 'demo-ar.html'; // Đổi lại trang gốc của bạn nếu cần
+    window.location.href = 'demo-ar.html'; // Chỉnh lại theo đúng file gốc của bạn
 }
 function setStatus(msg) { document.getElementById('status-bar').textContent = msg; }
 function showSpinner(on) { document.getElementById('spinner').classList.toggle('active', on); }
