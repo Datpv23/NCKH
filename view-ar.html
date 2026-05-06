@@ -262,31 +262,46 @@ setupUI();
 setupGestures();
 
 // --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
+// --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
 function autoSaveScene() {
     if (placedObjects.length === 0) {
         localStorage.removeItem('vku_ar_autosave');
         return;
     }
 
-    // Lấy vật thể đầu tiên làm Gốc Tọa Độ (Anchor)
-    const anchor = placedObjects[0];
-    const anchorMatrixInverse = anchor.matrixWorld.clone().invert();
+    // Ưu tiên lấy cái Phòng làm Gốc (Anchor), nếu không có phòng thì lấy vật đầu tiên
+    const anchor = mainRoom || placedObjects[0];
+    
+    // Bắt buộc cập nhật ma trận thế giới mới nhất trước khi tính toán
+    anchor.updateMatrixWorld(true);
+    placedObjects.forEach(obj => obj.updateMatrixWorld(true));
+
+    // Lấy Tọa độ và Góc xoay của vật làm Gốc
+    const anchorPos = new THREE.Vector3();
+    const anchorQuat = new THREE.Quaternion();
+    anchor.matrixWorld.decompose(anchorPos, anchorQuat, new THREE.Vector3());
+    
+    // Nghịch đảo góc xoay của Gốc
+    const anchorQuatInverse = anchorQuat.clone().invert();
 
     const sceneData = placedObjects.map(wrapper => {
         const pivotGroup = wrapper.children[0];
         
-        // Tính toán vị trí và góc xoay TƯƠNG ĐỐI so với Gốc
-        const relativeMatrix = anchorMatrixInverse.clone().multiply(wrapper.matrixWorld);
-        const relPos = new THREE.Vector3();
-        const relQuat = new THREE.Quaternion();
-        relativeMatrix.decompose(relPos, relQuat, new THREE.Vector3());
+        const objPos = new THREE.Vector3();
+        const objQuat = new THREE.Quaternion();
+        wrapper.matrixWorld.decompose(objPos, objQuat, new THREE.Vector3());
+
+        // Tính vị trí TƯƠNG ĐỐI (Khoảng cách từ vật đến Gốc, bẻ theo góc xoay của Gốc)
+        const relPos = objPos.clone().sub(anchorPos).applyQuaternion(anchorQuatInverse);
+        // Tính góc xoay TƯƠNG ĐỐI
+        const relQuat = anchorQuatInverse.clone().multiply(objQuat);
 
         return {
             url: wrapper.userData.modelUrl,
             isRoom: wrapper.userData.isRoom,
             relPos: relPos.toArray(),
             relQuat: relQuat.toArray(),
-            scale: wrapper.scale.x,
+            scale: wrapper.scale.x,  // Lưu riêng Scale, không đưa vào ma trận để tránh nhiễu
             posY: pivotGroup.position.y,
             baseY: pivotGroup.userData.baseY,
             rot: pivotGroup.rotation.toArray()
@@ -424,24 +439,22 @@ function onSelect() {
         isRestoringScene = false; // Tắt cờ khôi phục
         const savedData = JSON.parse(localStorage.getItem('vku_ar_autosave'));
         
-        // Lấy vị trí reticle làm tọa độ Gốc Mới
-        const newAnchorMatrix = reticle.matrix.clone();
+        // Lấy tọa độ và góc xoay của vòng tròn xanh làm Gốc Mới
+        const reticlePos = new THREE.Vector3();
+        const reticleQuat = new THREE.Quaternion();
+        reticle.matrix.decompose(reticlePos, reticleQuat, new THREE.Vector3());
 
         savedData.forEach(item => {
-            // Tái tạo ma trận tương đối
-            const relMatrix = new THREE.Matrix4().compose(
-                new THREE.Vector3().fromArray(item.relPos),
-                new THREE.Quaternion().fromArray(item.relQuat),
-                new THREE.Vector3(1, 1, 1)
-            );
-            
-            // Nhân để ra tọa độ thực tế trên sân mới
-            const targetMatrix = newAnchorMatrix.clone().multiply(relMatrix);
-            const targetPos = new THREE.Vector3();
-            const targetQuat = new THREE.Quaternion();
-            targetMatrix.decompose(targetPos, targetQuat, new THREE.Vector3());
+            const relPos = new THREE.Vector3().fromArray(item.relPos);
+            const relQuat = new THREE.Quaternion().fromArray(item.relQuat);
 
-            // Đặt model
+            // Tính Tọa độ thực tế: Tọa độ Gốc mới + Khoảng cách tương đối (đã xoay theo Gốc mới)
+            const targetPos = relPos.clone().applyQuaternion(reticleQuat).add(reticlePos);
+            
+            // Tính Góc xoay thực tế: Góc Gốc mới + Góc tương đối
+            const targetQuat = reticleQuat.clone().multiply(relQuat);
+
+            // Đặt model với vị trí mới đã được bóc tách và tính toán chuẩn xác
             placeModel(item.url, {
                 pos: targetPos.toArray(),
                 quat: targetQuat.toArray(),
