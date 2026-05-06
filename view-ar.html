@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>WebAR – Nội Thất 3D Pro x Firebase</title>
+    <title>ViewAR – VKU AR DrawRoom</title>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,15 +25,16 @@
         }
 
         /* ── Status bar ── */
-        /* ── Status bar ── */
         #status-bar {
             position: fixed; 
-            top: 75px; /* Đã xích xuống dưới để né hàng nút bên trên */
+            top: 75px; 
             left: 50%; 
             transform: translateX(-50%);
             background: var(--surface); backdrop-filter: blur(14px);
             border: 1px solid var(--border); border-radius: 100px;
-            padding: 8px 20px; font-size: 13px; font-weight: 600;
+            padding: 6px 16px; /* Đã bóp nhỏ viền lại một chút cho cân với chữ */
+            font-size: 11px;   /* Chữ đã được làm nhỏ lại (cũ là 13px) */
+            font-weight: 600;
             color: var(--cyan); white-space: nowrap; pointer-events: none;
             z-index: 100; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
@@ -126,16 +127,23 @@
 
         #ARButton {
             position: fixed !important; 
-            bottom: 28px !important; 
-            left: 15px !important;      /* Neo sát lề trái */
-            transform: none !important; /* Bỏ lệnh dịch chuyển căn giữa */
-            background: var(--red) !important; /* Nút đỏ cảnh báo thoát */
-            border: none !important; 
-            border-radius: 100px !important; 
+            top: 15px !important;       
+            bottom: auto !important;    
+            left: 15px !important;      
+            transform: none !important; 
+            background: var(--surface) !important; 
+            border: 1px solid var(--red) !important; 
+            border-radius: 8px !important; 
             color: #fff !important;
-            font-weight: 700 !important; 
-            padding: 12px 24px !important; 
-            z-index: 80 !important;
+            font-family: inherit !important;
+            font-size: 14px !important;    /* Ép cỡ chữ nhỏ lại cho bằng Menu */
+            font-weight: 600 !important; 
+            padding: 8px 14px !important;  /* Bóp viền lại một xíu */
+            height: auto !important;       /* Bỏ chiều cao mặc định của Three.js */
+            line-height: normal !important;/* Chuẩn hóa lại dòng */
+            z-index: 95 !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
         }
     </style>
 </head>
