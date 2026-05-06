@@ -248,22 +248,21 @@ let pinchActive = false, pinchInitDist = 0, pinchInitScale = 1;
 let categoryDisplayNames = {};
 let modelDatabase = {};
 let isRestoringScene = false; 
+let isRoomSetupStarted = false; // Biến kiểm soát hiển thị các nút Phòng
 
 init();
 setupUI();
 setupGestures();
 
-// --- TỰ ĐỘNG LƯU TRẠNG THÁI (Thuật toán Ma trận Tương đối Chính xác) ---
+// --- TỰ ĐỘNG LƯU TRẠNG THÁI ---
 function autoSaveScene() {
     if (placedObjects.length === 0) {
         localStorage.removeItem('vku_ar_autosave');
         return;
     }
 
-    // Ưu tiên lấy cái Phòng làm Gốc (Anchor), nếu không có phòng thì lấy vật đầu tiên
     const anchor = mainRoom || placedObjects[0];
     
-    // Cập nhật ma trận mới nhất
     anchor.updateMatrixWorld(true);
     placedObjects.forEach(obj => obj.updateMatrixWorld(true));
 
@@ -313,7 +312,6 @@ async function init() {
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Tạo AR Button và gắn lên Body
     const arButtonElement = ARButton.createButton(renderer, {
         requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body }
     });
@@ -339,7 +337,6 @@ async function init() {
 }
 
 // --- BẢO VỆ GIAO DIỆN KHỎI SỰ KIỆN XUYÊN THỦNG ---
-// Lắng nghe sự kiện toàn cục: Khi bấm vào UI web (Bao gồm Stop AR Button), chặn XR Select lại
 document.addEventListener('beforexrselect', (ev) => {
     const isUI = ev.target.id === 'ARButton' || 
                  ev.target.closest('#right-sidebar') || 
@@ -381,38 +378,54 @@ function renderCategories() {
     document.getElementById('btn-back-cat').style.display = "none";
     content.innerHTML = "";
 
-    // 1. NÚT KHÔI PHỤC DỰ ÁN NẰM TRÊN CÙNG
-    if (localStorage.getItem('vku_ar_autosave')) {
-        const restoreBtn = document.createElement('div');
-        restoreBtn.className = 'cat-item';
-        restoreBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-        restoreBtn.style.borderColor = '#4ade80';
-        restoreBtn.style.color = '#fff';
-        restoreBtn.innerHTML = `<span>📂 Dự án đã lưu: Khôi phục</span>`;
-        restoreBtn.addEventListener('pointerdown', (e) => {
+    // Chỉ hiển thị 2 nút này khi người dùng CHƯA chọn thiết lập/khôi phục phòng
+    if (!isRoomSetupStarted) {
+        
+        // 1. NÚT KHÔI PHỤC DỰ ÁN
+        if (localStorage.getItem('vku_ar_autosave')) {
+            const restoreBtn = document.createElement('div');
+            restoreBtn.className = 'cat-item';
+            restoreBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+            restoreBtn.style.borderColor = '#4ade80';
+            restoreBtn.style.color = '#fff';
+            restoreBtn.innerHTML = `<span>📂 Dự án đã lưu: Khôi phục</span>`;
+            restoreBtn.addEventListener('pointerdown', (e) => {
+                e.stopPropagation(); uiLockTime = Date.now();
+                document.getElementById('right-sidebar').classList.remove('open');
+                
+                isRestoringScene = true; 
+                isRoomSetupStarted = true; // Đánh dấu đã bắt đầu thiết lập
+                renderCategories(); // Render lại menu để ẩn các nút này đi
+                
+                setStatus('🔄 Quét sàn, chọn vị trí và chạm vòng xanh để ĐẶT LẠI CĂN PHÒNG.');
+            });
+            content.appendChild(restoreBtn);
+        }
+
+        // 2. Nút Phòng Ảo Mới
+        const roomBtn = document.createElement('div');
+        roomBtn.className = 'cat-item';
+        roomBtn.style.borderColor = "var(--cyan)";
+        roomBtn.innerHTML = `<span>🏠 Thiết Lập Phòng Ảo Mới</span>`;
+        roomBtn.addEventListener('pointerdown', (e) => {
             e.stopPropagation(); uiLockTime = Date.now();
+            
+            // Xóa triệt để dự án cũ
+            localStorage.removeItem('vku_ar_autosave');
+            
+            currentModelPath = "models/PHONGVE3D.glb"; 
             document.getElementById('right-sidebar').classList.remove('open');
-            isRestoringScene = true; 
-            setStatus('🔄 Quét sàn, chọn vị trí và chạm vòng xanh để ĐẶT LẠI CĂN PHÒNG.');
+            if (activeObject) closeEditMode();
+            
+            isRoomSetupStarted = true; // Đánh dấu đã bắt đầu thiết lập
+            renderCategories(); // Render lại menu để ẩn các nút này đi
+            
+            setStatus("Quét sàn thật để đặt Phòng.");
         });
-        content.appendChild(restoreBtn);
+        content.appendChild(roomBtn);
     }
 
-    // 2. Nút Phòng Ảo Mới
-    const roomBtn = document.createElement('div');
-    roomBtn.className = 'cat-item';
-    roomBtn.style.borderColor = "var(--cyan)";
-    roomBtn.innerHTML = `<span>🏠 Thiết Lập Phòng Ảo Mới</span>`;
-    roomBtn.addEventListener('pointerdown', (e) => {
-        e.stopPropagation(); uiLockTime = Date.now();
-        currentModelPath = "models/PHONGVE3D.glb"; 
-        document.getElementById('right-sidebar').classList.remove('open');
-        if (activeObject) closeEditMode();
-        setStatus("Quét sàn thật để đặt Phòng.");
-    });
-    content.appendChild(roomBtn);
-
-    // 3. Các danh mục đồ nội thất
+    // 3. Các danh mục đồ nội thất (Luôn hiển thị)
     Object.keys(categoryDisplayNames).forEach(id => {
         const btn = document.createElement('div');
         btn.className = 'cat-item';
@@ -455,10 +468,9 @@ function onSelect() {
 
     // KÍCH HOẠT KHÔI PHỤC KHI CHẠM MẶT PHẲNG
     if (isRestoringScene) {
-        isRestoringScene = false; // Tắt cờ khôi phục
+        isRestoringScene = false; 
         const savedData = JSON.parse(localStorage.getItem('vku_ar_autosave'));
         
-        // Lấy tọa độ và góc xoay của vòng tròn xanh làm Gốc Mới
         const reticlePos = new THREE.Vector3();
         const reticleQuat = new THREE.Quaternion();
         reticle.matrix.decompose(reticlePos, reticleQuat, new THREE.Vector3());
@@ -467,13 +479,9 @@ function onSelect() {
             const relPos = new THREE.Vector3().fromArray(item.relPos);
             const relQuat = new THREE.Quaternion().fromArray(item.relQuat);
 
-            // Tính Tọa độ thực tế: Tọa độ Gốc mới + Khoảng cách tương đối (đã xoay theo Gốc mới)
             const targetPos = relPos.clone().applyQuaternion(reticleQuat).add(reticlePos);
-            
-            // Tính Góc xoay thực tế: Góc Gốc mới + Góc tương đối
             const targetQuat = reticleQuat.clone().multiply(relQuat);
 
-            // Đặt model với vị trí mới đã được bóc tách và tính toán chuẩn xác
             placeModel(item.url, {
                 pos: targetPos.toArray(),
                 quat: targetQuat.toArray(),
@@ -551,7 +559,6 @@ function placeModel(path, savedState = null) {
         wrapper.userData.modelUrl = path; 
         wrapper.userData.isRoom = isRoom; 
 
-        // Gán Tọa Độ (Dựa theo Trạng Thái Khôi Phục hoặc Đặt Mới)
         if (savedState) {
             wrapper.position.fromArray(savedState.pos);
             wrapper.quaternion.fromArray(savedState.quat);
@@ -565,7 +572,6 @@ function placeModel(path, savedState = null) {
         model.position.set(-ctr.x, -ctr.y, -ctr.z);
         pivotGroup.add(model);
 
-        // Gán Trục Cao Y và Xoay Nội Bộ
         if (savedState) {
             pivotGroup.position.y = savedState.posY;
             pivotGroup.rotation.fromArray(savedState.rot);
@@ -579,7 +585,6 @@ function placeModel(path, savedState = null) {
         scene.add(wrapper);
         placedObjects.push(wrapper);
 
-        // Tự động lưu nếu là đặt mới
         if (!savedState) autoSaveScene();
 
         if (gltf.animations?.length) {
@@ -631,14 +636,18 @@ function closeEditMode() {
     uiLockTime = Date.now();
     document.getElementById('edit-panel').style.display = 'none';
     setStatus('Chạm không gian để đặt · Chạm vật để chỉnh sửa');
-    autoSaveScene(); // LƯU SAU KHI SỬA
+    autoSaveScene(); 
 }
 
 function deleteActive() {
     if (!activeObject) return;
+    
+    // Nếu người dùng lỡ tay xóa mất cái Phòng chính
     if (activeObject === mainRoom) {
         mainRoom = null; 
-        setStatus('Đã xóa phòng. Quét sàn thật để đặt lại.');
+        isRoomSetupStarted = false; // Mở lại tùy chọn thiết lập trong Menu
+        renderCategories(); // Load lại menu ngay
+        setStatus('Đã xóa phòng. Mở Menu để thiết lập lại.');
     }
     
     activeObject.traverse(child => {
@@ -651,7 +660,7 @@ function deleteActive() {
     scene.remove(activeObject); placedObjects.splice(placedObjects.indexOf(activeObject), 1);
     
     closeEditMode();
-    autoSaveScene(); // LƯU SAU KHI XÓA
+    autoSaveScene(); 
 }
 
 // --- SETUP UI CHUNG ---
