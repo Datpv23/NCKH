@@ -121,10 +121,21 @@
         #btn-done   { background: var(--green); }
 
         #ARButton {
-            position: fixed !important; bottom: 28px !important; left: 50% !important;
-            transform: translateX(-50%) !important; background: var(--green) !important;
-            border: none !important; border-radius: 100px !important; color: #fff !important;
-            font-weight: 700 !important; padding: 14px 36px !important; z-index: 80 !important;
+            position: fixed !important; 
+            top: 15px !important;       /* Neo lên góc trên */
+            bottom: auto !important;    /* Xóa vị trí bottom mặc định của Three.js */
+            left: 15px !important;      /* Neo sát lề trái */
+            transform: none !important; /* Bỏ lệnh dịch chuyển căn giữa */
+            background: var(--surface) !important; 
+            border: 1px solid var(--red) !important; /* Viền đỏ báo hiệu nút Thoát */
+            border-radius: 8px !important; 
+            color: #fff !important;
+            font-family: inherit !important;
+            font-weight: 600 !important; 
+            padding: 10px 16px !important; 
+            z-index: 95 !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
         }
     </style>
 </head>
