@@ -50,9 +50,9 @@
         Hệ thống quản trị và phân tích không gian 360 độ. Mọi dữ liệu được đồng bộ trực tiếp từ Cloud.
       </p>
 
-      <!-- Nút Thêm Mới -->
+      <!-- Nút Thêm Mới: Mặc định ẩn đi (display: none) -->
       <div style="text-align: center; margin-bottom: 40px;">
-          <button class="add-btn" onclick="openModal()">➕ Thêm Thực Thể Mới Lên Mây</button>
+          <button id="btn-add-new" class="add-btn" onclick="openModal()" style="display: none;">➕ Thêm Thực Thể Mới Lên Mây</button>
       </div>
 
       <!-- Vùng chứa danh sách Mô hình 3D load từ Firebase -->
@@ -98,6 +98,16 @@
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         // ==========================================
+        // 0. KIỂM TRA QUYỀN ADMIN (CHỈ MÁY CỦA BẠN MỚI CÓ)
+        // ==========================================
+        const IS_ADMIN = localStorage.getItem('vku_admin_key') === 'true';
+
+        // Nếu là máy của bạn, hiện nút Thêm mới lên
+        if (IS_ADMIN) {
+            document.getElementById('btn-add-new').style.display = 'inline-block';
+        }
+
+        // ==========================================
         // 1. CẤU HÌNH API
         // ==========================================
         const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dhkshat4s/auto/upload";
@@ -117,19 +127,17 @@
         const db = getFirestore(app);
 
         let categoryDisplayNames = {}; 
-        let modelDatabase = []; // Chuyển thành dạng mảng dẹt để in ra trang dễ hơn
+        let modelDatabase = []; 
         
         // ==========================================
         // 2. HÀM TẢI & HIỂN THỊ DỮ LIỆU
         // ==========================================
         window.fetchFromFirebase = async function() {
             try {
-                // Tải danh mục (Dùng cho thẻ Select lúc thêm mới)
                 const catSnapshot = await getDocs(collection(db, "categories"));
                 categoryDisplayNames = {};
                 catSnapshot.forEach((doc) => { categoryDisplayNames[doc.id] = doc.data().name; });
 
-                // Tải vật thể
                 const modelSnapshot = await getDocs(collection(db, "models"));
                 modelDatabase = []; 
                 
@@ -150,25 +158,26 @@
             }
         }
 
-        // Tạo ra các thẻ Model Viewer cỡ lớn
         window.renderModelsToPage = function() {
             const container = document.getElementById('dynamic-models-container');
             container.innerHTML = ''; 
 
             if(modelDatabase.length === 0) {
-                container.innerHTML = "<p style='text-align: center; color: gray;'>Cơ sở dữ liệu đang trống. Hãy thêm thực thể mới!</p>";
+                container.innerHTML = "<p style='text-align: center; color: gray;'>Cơ sở dữ liệu đang trống.</p>";
                 return;
             }
 
             modelDatabase.forEach((item, index) => {
-                // Tạo số thứ tự định dạng [01], [02]
                 const indexFormat = index + 1 < 10 ? `0${index + 1}` : index + 1;
                 
+                // Nút Xóa chỉ xuất hiện dưới dạng chuỗi HTML nếu đang dùng máy tính Admin
+                const deleteBtnHTML = IS_ADMIN ? `<button class="delete-btn" onclick="deleteModel('${item.id}')">🗑 Xóa</button>` : '';
+
                 const block = document.createElement('div');
                 block.innerHTML = `
                     <h2 style="text-align: center; color: var(--vku-gold); font-size: 1.5rem;">
                         [${indexFormat}] ${item.name}
-                        <button class="delete-btn" onclick="deleteModel('${item.id}')">🗑 Xóa</button>
+                        ${deleteBtnHTML}
                     </h2>
                     <div class="ar-container">
                         <model-viewer
@@ -190,13 +199,14 @@
         // 3. CHỨC NĂNG QUẢN TRỊ (XÓA & THÊM)
         // ==========================================
         window.deleteModel = async function(docId) {
+            // Chặn trực tiếp ở hàm đề phòng ai đó cố tình gọi hàm
+            if (!IS_ADMIN) return alert("❌ Bạn không có quyền xóa trên thiết bị này!");
+
             const confirmDelete = confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa thực thể này vĩnh viễn khỏi Database?");
             if (confirmDelete) {
                 try {
                     await deleteDoc(doc(db, "models", docId)); 
                     alert("✅ Đã xóa thành công!");
-                    
-                    // Hiện trạng thái đang tải và kéo dữ liệu mới
                     document.getElementById('dynamic-models-container').innerHTML = '<p style="text-align: center; color: #00e5ff;">⏳ Đang cập nhật lại cơ sở dữ liệu...</p>';
                     fetchFromFirebase(); 
                 } catch (error) {
@@ -206,6 +216,8 @@
         }
 
         window.openModal = function() {
+            if (!IS_ADMIN) return alert("❌ Bạn không có quyền thêm mới trên thiết bị này!");
+
             const selectEl = document.getElementById('inp-category');
             selectEl.innerHTML = ''; 
             Object.keys(categoryDisplayNames).forEach(catCode => {
@@ -236,6 +248,8 @@
 
         window.submitNewModel = async function(event) {
             event.preventDefault(); 
+            if (!IS_ADMIN) return alert("❌ Thao tác bị từ chối!");
+
             const btnSave = document.getElementById('btn-save');
             const imgFile = document.getElementById('inp-image-file').files[0];
             const modelFile = document.getElementById('inp-model-file').files[0];
@@ -264,7 +278,6 @@
                 alert("🎉 Đã thêm thực thể thành công!");
                 closeModal();
                 
-                // Kéo lại dữ liệu
                 document.getElementById('dynamic-models-container').innerHTML = '<p style="text-align: center; color: #00e5ff;">⏳ Đang đồng bộ thực thể mới...</p>';
                 fetchFromFirebase(); 
 
